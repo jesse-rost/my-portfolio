@@ -12,3 +12,9 @@ tcp-banking-system/Client
 tcp-banking-system/*.o
 tcp-banking-system/server_log.txt
 tcp-banking-system/balance.csv
+
+# Embedded Sensor Scheduler Exclusions
+embedded-sensor-scheduler/Debug/
+embedded-sensor-scheduler/**/*.o
+embedded-sensor-scheduler/**/*.elf
+embedded-scheduler-scheduler/**/*.bin
