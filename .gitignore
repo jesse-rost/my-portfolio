@@ -5,3 +5,10 @@
 *.d
 mandel
 mandelmovie
+
+# TCP Banking System Exclusions
+tcp-banking-system/Server
+tcp-banking-system/Client
+tcp-banking-system/*.o
+tcp-banking-system/server_log.txt
+tcp-banking-system/balance.csv
