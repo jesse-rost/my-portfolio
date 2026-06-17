@@ -1,49 +1,58 @@
 # Hardware Health Monitor
 
-A real-time embedded sensor monitoring system developed on an ARM Cortex-M4 microcontroller (STM32F411). The system polls voltage, current, and temperature sensors over a shared I2C bus and presents system health metrics through an interactive state-driven user interface controlled by an analog joystick and an 8×8 RGB LED matrix.
+A real-time embedded monitoring system developed on an STM32F411 ARM Cortex-M4 microcontroller. The application continuously acquires voltage, current, and temperature measurements over a shared I2C bus and presents system health information through an interactive LED matrix user interface.
 
-Built entirely with direct memory-mapped register manipulation, the project demonstrates bare-metal embedded development without reliance on STM32 HAL libraries or a full RTOS.
+Built entirely using direct memory-mapped register manipulation, the project demonstrates bare-metal embedded systems development, custom task scheduling, sensor integration, interrupt-driven input handling, and real-time graphical rendering without STM32 HAL libraries or a traditional RTOS.
 
 ---
 
-# 🚀 System Architecture Overview
+# Overview
 
 The system is structured as a lightweight embedded application composed of three primary software layers:
 
-## Low-Level Hardware Layer
+1. **Low-Level Hardware Layer**
+   - Register-level peripheral drivers
+   - Direct memory-mapped hardware access
+   - No HAL dependencies
 
-Custom register-level peripheral drivers provide direct hardware access for:
+2. **Cooperative Scheduler Layer**
+   - Custom round-robin task scheduler
+   - PendSV-based context switching
+   - SysTick-driven task timing
 
-- GPIO
-- I2C
-- ADC
-- SysTick Timer
+3. **Application Layer**
+   - Sensor acquisition tasks
+   - State-driven user interface
+   - Interactive display management
 
-All peripheral configuration is performed through direct memory-mapped register manipulation (`regaddr.h`), eliminating framework overhead and providing deterministic control of the hardware.
-
-## Cooperative Scheduler Layer
-
-A custom cooperative task scheduler (`roundRobin.c`) provides lightweight task execution using ARM Cortex-M PendSV context switching.
-
-### Features
-
-- Manual task stack construction
-- ARM exception-frame emulation
-- Register preservation (R4-R11)
-- SysTick-driven scheduling events
-- PendSV-based context switching
-
-The scheduler framework supports multiple concurrent tasks while maintaining a significantly smaller footprint than a traditional RTOS. In the current implementation, the scheduler manages the primary sensor acquisition and display task alongside the main execution context.
-
-## Application & FSM Layer
-
-Application logic is built around a Finite State Machine (FSM) responsible for rendering system metrics and processing user input.
-
-Sensor measurements are collected and forwarded to the display subsystem, which dynamically switches between graphical and numerical visualization modes.
+Together these layers provide deterministic execution while maintaining a small memory footprint suitable for resource-constrained embedded systems.
 
 ---
 
-# 🔧 Hardware Used
+# System Architecture
+
+```text
+┌──────────────────────────────────────────────┐
+│               Application Layer              │
+│   Display FSM & Sensor Processing Tasks      │
+└─────────────────┬────────────────────────────┘
+                  │
+                  ▼
+┌──────────────────────────────────────────────┐
+│          Cooperative Scheduler Layer         │
+│     Round-Robin Task Scheduling Engine       │
+└─────────────────┬────────────────────────────┘
+                  │
+                  ▼
+┌──────────────────────────────────────────────┐
+│          Low-Level Hardware Drivers          │
+│ GPIO │ I2C │ ADC │ SysTick │ Interrupts      │
+└──────────────────────────────────────────────┘
+```
+
+---
+
+# Hardware Components
 
 | Component | Purpose |
 |------------|------------|
@@ -56,35 +65,41 @@ Sensor measurements are collected and forwarded to the display subsystem, which 
 
 ---
 
-# 🛠️ Software & Peripheral Breakdown
+# Software & Peripheral Breakdown
 
-## Cooperative Round-Robin Scheduler (`roundRobin.c` / `roundRobin.h`)
+## Cooperative Scheduler (`roundRobin.c` / `roundRobin.h`)
 
-Operating from a 1 ms SysTick interrupt source, the scheduler performs cooperative task switching without requiring an external operating system.
+The scheduler operates from a 1 ms SysTick interrupt source and provides lightweight cooperative multitasking without requiring an RTOS.
 
-### Context Preservation
+### Features
 
-Task stacks are initialized by manually constructing Cortex-M exception frames containing:
+- Manual task stack construction
+- ARM exception-frame emulation
+- Register preservation (R4–R11)
+- SysTick-based timing
+- PendSV context switching
+
+### Context Management
+
+Task stacks are initialized by constructing Cortex-M exception frames containing:
 
 - xPSR
 - PC
 - LR
 - R12
-- R3-R0
+- R3–R0
 
-Additional registers (R4-R11) are preserved and restored during PendSV context switches.
+Additional registers are preserved and restored during context switches.
 
-### Execution Swapping
+### Context Switching
 
-Context switches are triggered by setting the PendSV pending bit through the ARM Interrupt Control and State Register (`SCB_ICSR`).
-
-This approach provides deterministic task execution while maintaining minimal runtime overhead.
+Execution transfers are triggered through the PendSV exception by setting the pending bit in the Interrupt Control and State Register (`SCB_ICSR`).
 
 ---
 
-## Bare-Metal I2C Bus Driver (`i2c.c` / `i2c.h`)
+## Bare-Metal I2C Driver (`i2c.c` / `i2c.h`)
 
-A custom master-mode I2C driver provides communication with all external peripherals on a shared bus.
+A custom master-mode I2C implementation manages communication with all external peripherals on the shared bus.
 
 ### Features
 
@@ -93,51 +108,49 @@ A custom master-mode I2C driver provides communication with all external periphe
 - Address acknowledgment verification
 - Byte Transfer Finished (BTF) validation
 - Stop condition generation
-- Multi-byte read/write support
+- Multi-byte transactions
 
-### Fault Tolerance
+### Fault Protection
 
-All polling operations utilize deterministic software timeout protection.
+Deterministic timeout protection prevents firmware lockups during bus faults or peripheral disconnects.
 
 ```c
 const int TIMEOUT = 10000;
 ```
 
-This prevents firmware lockup if a sensor disconnects, fails to acknowledge, or experiences a bus fault.
+This ensures the system remains responsive even if a device becomes unavailable.
 
 ---
 
 ## State-Driven User Interface (`display_task.c` / `matrix.c`)
 
-Visual output is controlled by a dedicated Finite State Machine.
+Visual output is controlled through a dedicated Finite State Machine (FSM).
 
 ### DISPLAY_IDLE
 
-Displays a composite bar graph representing:
+Displays a combined bar graph representing:
 
 - Voltage
 - Current
 - Temperature
 
-Values are color-coded according to configurable safety thresholds:
+Color thresholds indicate operating status:
 
-- Green = Safe
+- Green = Normal
 - Yellow = Warning
 - Red = Critical
 
 ### DISPLAY_SCROLLING
 
-Activated through joystick movement.
+Activated through joystick input.
 
-Allows the user to cycle through individual metrics displayed as enlarged numerical values.
+Allows users to cycle through enlarged numerical displays of individual measurements.
 
 ### DISPLAY_RETURNING
 
-Intermediate timeout state.
+Maintains the currently selected display after user interaction.
 
-Maintains the currently selected metric while monitoring for user activity.
-
-After three seconds of inactivity, the display automatically returns to the default bar graph view.
+Following three seconds of inactivity, the FSM automatically transitions back to the default system overview screen.
 
 ---
 
@@ -150,16 +163,16 @@ The joystick subsystem interfaces with a two-axis analog joystick connected to:
 
 ### Features
 
-- ADC1 scan mode
+- ADC scan mode
 - Continuous conversion mode
 - Interrupt-driven sampling
-- Automatic overrun recovery
-- Axis calibration offsets
-- Software deadband filtering
+- Overrun recovery
+- Calibration offsets
+- Deadband filtering
 
-### Noise Suppression
+### Noise Filtering
 
-The driver applies configurable centering offsets and deadband thresholds:
+The driver applies configurable offsets and software deadbands:
 
 ```c
 JOY_DEADBAND = 15
@@ -168,64 +181,52 @@ JOY_DEADBAND = 15
 to eliminate:
 
 - Analog noise
-- Mechanical centering error
-- Phantom navigation events
+- Mechanical centering drift
+- False navigation events
 
-### Robust ADC Sampling
-
-The joystick subsystem continuously samples both axes using ADC scan mode while leveraging interrupt-driven data acquisition.
-
-Overrun conditions are detected and automatically recovered, ensuring stable operation even under heavy system load.
-
-This implementation provides responsive, non-blocking user input without requiring polling loops inside application code.
+This provides responsive user interaction without requiring polling loops in application code.
 
 ---
 
-# 💡 Advanced Implementations Beyond Curriculum
+# Advanced Implementations
 
-This project required extensive use of manufacturer datasheets and hardware-level analysis to implement functionality normally abstracted by high-level frameworks.
+## BME280 Temperature Compensation
 
----
-
-## 🔬 BME280 Calibration Formula Implementation
-
-Accurate temperature measurement requires Bosch's fixed-point compensation algorithm rather than raw ADC readings.
+Accurate temperature measurements require Bosch's fixed-point compensation algorithm rather than raw ADC values.
 
 ### Initialization
 
-During `bme280_init()`:
+During startup:
 
-- Factory calibration constants are read directly from device memory.
-- Trim values loaded:
+- Factory trim values are read directly from sensor memory
+- Calibration coefficients loaded:
   - `dig_T1`
   - `dig_T2`
   - `dig_T3`
 
-### Processing
+### Runtime Processing
 
-The runtime compensation algorithm:
+The compensation algorithm:
 
-- Uses integer-only arithmetic
+- Uses integer arithmetic
 - Avoids floating-point overhead
-- Implements Bosch's datasheet-defined compensation procedure
+- Implements Bosch's datasheet-defined calculations
 
-Resulting measurements are returned with approximately:
+Resulting measurements achieve approximately:
 
 ```text
 ±0.01°C resolution
 ```
 
-while remaining computationally efficient on the Cortex-M4.
+while remaining computationally efficient.
 
 ---
 
-## ⚡ INA219 Precision Shunt Calibration
+## INA219 Current Calibration
 
-Rather than using default device parameters, the INA219 calibration register (`0x05`) is explicitly configured.
+The INA219 calibration register (`0x05`) is explicitly configured rather than relying on default settings.
 
 ### Configuration
-
-Known hardware values:
 
 ```text
 Shunt Resistance = 0.1 Ω
@@ -244,48 +245,42 @@ Cal = trunc(0.04096 / (Current_LSB × Rshunt))
 0x0199
 ```
 
-Writing this value allows the INA219 to:
-
-- Perform current calculations internally
-- Reduce MCU computation overhead
-- Improve measurement accuracy
+Programming this value allows the INA219 to perform current calculations internally, reducing processor workload and improving measurement accuracy.
 
 ---
 
-## 🎨 Shadow-Buffered Matrix Graphics & Custom Typography
+## Shadow-Buffered Graphics Engine
 
-The HT16K33 LED matrix controller does not provide native pixel-addressable text rendering.
+The HT16K33 does not provide native text-rendering functionality.
 
-To overcome this limitation, a custom graphics engine was implemented.
+To support dynamic numerical displays, a custom graphics engine was implemented.
 
 ### Custom Fonts
 
-Two compact bitmap font sets were designed:
+Two bitmap font sets were created:
 
-- 3×5 font for numerical values
-- 3×3 font for engineering units
+- 3×5 numeric font
+- 3×3 engineering unit font
 
-### Shadow Buffer Rendering
+### Shadow Buffer
 
 ```c
 uint8_t shadowBuffer[16];
 ```
 
-Characters are rendered into an off-screen memory buffer before being transmitted to the display.
+All rendering occurs in memory before transmission.
 
-### Atomic Display Updates
+### Atomic Updates
 
 Once rendering is complete:
 
-- The entire 16-byte frame buffer is transmitted over I2C
+- The entire 16-byte frame buffer is transmitted in a single I2C transaction
 - Display flicker is eliminated
 - Bus traffic is minimized
 
-This approach provides smooth updates while maintaining deterministic rendering behavior.
-
 ---
 
-# 📂 Repository Layout
+# Repository Layout
 
 ```text
 hardware-health-monitor/
@@ -315,32 +310,38 @@ hardware-health-monitor/
 
 ---
 
-# 🛠️ Verification & Testing
+# Testing & Validation
 
-System performance was validated using a digital logic analyzer and runtime instrumentation techniques.
+System operation was verified using runtime instrumentation and digital logic analyzer measurements.
 
-## Scheduler Timing Analysis
+## Scheduler Timing Verification
 
-Scheduler timing behavior was validated using GPIO instrumentation and logic analyzer measurements to observe execution intervals and context-switch timing.
+GPIO instrumentation was used to observe:
 
-## I2C Signal Integrity
+- Task execution intervals
+- Scheduler timing accuracy
+- Context-switch behavior
 
-Monitored SDA and SCL traffic to verify:
+Measured timing aligned with the intended 1 ms SysTick scheduling framework.
+
+### I2C Bus Validation
+
+Logic analyzer captures verified:
 
 - Sensor polling transactions
-- Display update bursts
-- Proper start/stop sequencing
+- Display update transfers
+- Correct start/stop sequences
+- Reliable timeout recovery
 - Absence of bus contention
-- Reliable timeout recovery behavior
 
-## FSM Validation
+### FSM Verification
 
-Confirmed:
+Testing confirmed:
 
-- Correct state transitions during joystick interaction
-- Numerical display navigation behavior
-- Automatic timeout return after 3000 ms of inactivity
-- Restoration of the default bar graph display
+- Correct state transitions
+- Reliable joystick navigation
+- Automatic return-to-idle behavior after 3000 ms
+- Stable display rendering across all operating modes
 
 ---
 
@@ -351,13 +352,14 @@ This project provided practical experience with:
 - Bare-metal STM32 development
 - ARM Cortex-M exception handling
 - PendSV-based context switching
+- Cooperative task scheduling
 - Register-level peripheral configuration
 - I2C protocol implementation
 - Interrupt-driven ADC acquisition
 - Finite State Machine design
-- Sensor calibration algorithms
 - Embedded graphics rendering
-- Real-time system debugging using logic analyzers
+- Sensor calibration algorithms
+- Real-time debugging using logic analyzers
 
 ---
 
