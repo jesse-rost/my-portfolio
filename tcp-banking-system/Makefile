@@ -3,12 +3,12 @@ CFLAGS = -Wall -g
 LDFLAGS = 
 
 # Client executable
-CLIENT_SOURCES = Client.c
+CLIENT_SOURCES = src/Client.c
 CLIENT_OBJECTS = $(CLIENT_SOURCES:.c=.o)
 CLIENT_EXECUTABLE = Client
 
 # Server executable
-SERVER_SOURCES = Server.c
+SERVER_SOURCES = src/Server.c
 SERVER_OBJECTS = $(SERVER_SOURCES:.c=.o)
 SERVER_EXECUTABLE = Server
 
@@ -22,7 +22,8 @@ $(CLIENT_EXECUTABLE): $(CLIENT_OBJECTS)
 $(SERVER_EXECUTABLE): $(SERVER_OBJECTS)
 	$(CC) $(SERVER_OBJECTS) $(LDFLAGS) -o $@
 
-.c.o:
+# Pattern rule to compile source files to object files
+%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
