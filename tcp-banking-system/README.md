@@ -1,4 +1,4 @@
-# Lab 15 Final Project: Producer/Consumer Bank Account
+# Producer/Consumer Bank Account
 The implementation of bank account using producer/consumer allows for multiple
 clients to work and connect to the same server for editing and having banking
 transaction. This also allows the same account to be edited with no issues. To
