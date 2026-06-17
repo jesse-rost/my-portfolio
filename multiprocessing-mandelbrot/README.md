@@ -1,4 +1,4 @@
-# System Programming Lab 11 – Multiprocessing
+# Multiprocessing
 ## CPE-2600 — Fall 2025  
 **Author:** Jesse Rost  
 **Section:** 112
