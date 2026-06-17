@@ -37,15 +37,15 @@ Acceleration data is collected through atomic multi-byte transactions and conver
 ┌─────────────────────────────────────────────┐
 │          Application Layer (test.c)         │
 │  • Converts raw acceleration to g-force     │
-│  • Monitors real-time tap interrupts         │
+│  • Monitors real-time tap interrupts        │
 └─────────────────────┬───────────────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────┐
 │       Device Driver Layer (adxl345.c)       │
-│  • Sensor configuration                      │
-│  • Burst-read acquisition                    │
-│  • Register management                       │
+│  • Sensor configuration                     │
+│  • Burst-read acquisition                   │
+│  • Register management                      │
 └─────────────────────┬───────────────────────┘
                       │
                       ▼
