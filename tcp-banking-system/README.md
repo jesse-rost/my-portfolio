@@ -34,23 +34,23 @@ This design separates network communication from transaction processing while en
 # System Architecture
 
 ```text
-Clients
-   │
-   ▼
-Producer Threads
-   │
-   ▼
+        Clients
+           │
+           ▼
+    Producer Threads
+           │
+           ▼
 ┌──────────────────────┐
 │ Transaction Queue    │
 │ (Bounded Buffer)     │
 └──────────┬───────────┘
            │
            ▼
-Consumer Threads
+    Consumer Threads
            │
            ▼
- Account Database
-(balance.csv)
+    Account Database
+     (balance.csv)
 ```
 
 ---
