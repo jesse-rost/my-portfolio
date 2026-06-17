@@ -1,184 +1,214 @@
 # STM32 Bare-Metal SPI & ADXL345 Accelerometer Driver
 
-A high-performance, register-level SPI master driver and layered ADXL345 accelerometer client application developed for the ARM Cortex-M4 microcontroller (STM32F411). This project bypasses hardware abstraction layers (HAL) to interface directly with memory-mapped peripheral registers, illustrating raw serial bus communication, timing analysis, and hardware interrupt-line polling.
+A register-level SPI master driver and layered ADXL345 accelerometer application developed for the ARM Cortex-M4 STM32F411 microcontroller. The project bypasses STM32 HAL libraries and interfaces directly with memory-mapped peripheral registers, demonstrating low-level serial communication, device driver design, and hardware verification techniques.
+
+The software architecture separates generic SPI bus management from device-specific accelerometer functionality, creating a reusable embedded driver stack capable of supporting additional SPI peripherals with minimal modification.
 
 ---
 
-# 🚀 Architectural Overview
+# Overview
 
-The driver architecture uses a layered hardware-access model. This design separates generic SPI bus operations from device-specific register manipulation, enabling the SPI driver to act as an abstract controller for any synchronous serial peripheral.
+The project implements a complete SPI communication stack for interfacing with an ADXL345 three-axis accelerometer.
+
+A generic SPI master driver provides low-level bus control while a dedicated ADXL345 driver manages sensor configuration, burst data acquisition, and tap-event monitoring.
+
+Acceleration data is collected through atomic multi-byte transactions and converted into calibrated g-force measurements for real-time monitoring and analysis.
+
+---
+
+# Key Features
+
+- Bare-metal STM32F411 development
+- Register-level SPI peripheral configuration
+- Motorola SPI Modes 0–3 support
+- Software-controlled chip select management
+- Full-duplex SPI transaction engine
+- ADXL345 accelerometer integration
+- Atomic multi-byte burst reads
+- Tap-event detection support
+- UART diagnostic output
+- Logic analyzer-based hardware validation
+
+---
+
+# System Architecture
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│               Application Layer (test.c)                │
-│   - Converts Raw Signed 16-Bit Values to g-Force Units  │
-│   - Polls Physical PA0 Line for Real-Time Tap Events    │
-└────────────────────────────┬────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────┐
-│          Device-Specific Driver (adxl345.c)             │
-│   - Restores Standby FSM Prior to Calibration           │
-│   - Atomic Multi-Byte Burst Reads (DATAX0 to DATAZ1)    │
-└────────────────────────────┬────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────┐
-│             Generic Bus Driver (spi_api.c)              │
-│   - Motorola SPI Bus Arbiter (Modes 0-3)                │
-│   - Software Slave Select Management (PA4 Active-LOW)   │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│          Application Layer (test.c)         │
+│  • Converts raw acceleration to g-force     │
+│  • Monitors real-time tap interrupts         │
+└─────────────────────┬───────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────┐
+│       Device Driver Layer (adxl345.c)       │
+│  • Sensor configuration                      │
+│  • Burst-read acquisition                    │
+│  • Register management                       │
+└─────────────────────┬───────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────┐
+│        SPI Driver Layer (spi_api.c)         │
+│  • SPI Modes 0–3                            │
+│  • Software chip select                     │
+│  • Full-duplex transaction engine           │
+└─────────────────────────────────────────────┘
 ```
+
+The layered architecture isolates hardware communication from sensor-specific functionality, improving modularity and reusability across embedded projects.
 
 ---
 
-# 🛠️ Software & Peripheral Breakdown
+# Technical Highlights
 
-## Master SPI Peripheral Driver (`spi_api.c` / `spi_api.h`)
+## Register-Level SPI Driver
 
-The SPI API manages low-level clock and pin properties through direct register manipulation. It supports standard Motorola SPI polarity (CPOL) and phase (CPHA) configurations while handling master-mode data transfers over a shared serial bus.
+The SPI implementation directly configures STM32 SPI1 registers without relying on vendor-provided middleware.
 
-### SPI Master Initialization
+The driver manages:
 
-The `spi_init()` function:
+- GPIO alternate-function configuration
+- Clock initialization
+- SPI mode selection
+- Baud-rate configuration
+- Master-mode operation
+- Software-controlled chip select
 
-- Configures PA5 (SCK), PA6 (MISO), and PA7 (MOSI) for Alternate Function mode (AF5).
-- Configures PA4 as a software-controlled Slave Select output.
-- Enables SPI1 clocks.
-- Configures SPI mode (0–3).
-- Sets baud rate divisors and master-mode operation.
-
-```c
-void spi_init(uint8_t mode, uint8_t baud_div) {
-    volatile uint32_t *ahb1enr = (uint32_t*) RCC_AHB1ENR;
-    volatile uint32_t *apb2enr = (uint32_t*) RCC_APB2ENR;
-
-    *ahb1enr |= GPIOAEN_MASK;
-    *apb2enr |= SPI1_EN;
-
-    GPIO* const gpioa = (GPIO*) GPIOA_MODER;
-
-    gpioa->MODER &= ~(CLEAR_BITS_MSK);
-    gpioa->MODER |= (BIT_MODES_MSK);
-
-    gpioa->AFRL &= ~((0xF << 20) | (0xF << 24) | (0xF << 28));
-    gpioa->AFRL |= ((0x5 << 20) | (0x5 << 24) | (0x5 << 28));
-
-    gpioa->ODR |= (1 << 4);
-
-    uint8_t CPOL = (mode >> 1) & 0x1;
-    uint8_t CPHA = mode & 0x1;
-
-    SPI* const spi = (SPI*) SPI1_BASE;
-
-    spi->CR1 = 0;
-    spi->CR1 |= (CPOL << 1) | (CPHA << 0);
-    spi->CR1 |= ((baud_div & 0x7) << BR);
-    spi->CR1 |= MSTR_EN | SSM_EN | SSI_EN;
-}
-```
-
-### Three-Phase Transaction Engine
-
-To prevent hardware overrun (`OVR`) faults and provide flexible full-duplex communication, the SPI driver implements a three-phase transaction engine.
-
-#### Phase 1: Write-Only
-
-- Transmit command bytes.
-- Discard incoming shift-register data.
-- Clear RXNE to prevent overrun conditions.
-
-#### Phase 2: Overlap
-
-- Simultaneously transmit and receive data.
-- Supports command/response style peripherals.
-
-#### Phase 3: Read-Only
-
-- Generate clock edges using dummy writes (`0x00`).
-- Capture incoming slave data.
-
-```c
-int spi_wr(int write_length,
-           uint8_t* write_data,
-           int read_length,
-           uint8_t* read_data,
-           int overlap)
-{
-    ...
-}
-```
-
-### Bus Safety
-
-Before releasing the bus:
-
-```c
-while (spi->SR & BSY);
-```
-
-ensures the final SPI transaction has completely exited the shift register before deasserting Slave Select.
+This approach provides complete control over hardware behavior while minimizing software overhead.
 
 ---
 
-## Device-Specific Driver (`adxl345.c` / `adxl345.h`)
+## Three-Phase Transaction Engine
 
-The ADXL345 client driver builds on top of the generic SPI engine and manages sensor-specific register interactions.
+SPI communication is handled through a flexible transaction engine supporting mixed read/write operations.
 
-### Initialization Features
+### Write Phase
 
-- Restores standby mode before configuration.
-- Programs tap-detection registers.
-- Configures measurement mode.
-- Enables Full-Resolution output mode.
+- Sends command bytes
+- Discards incoming shift-register data
+- Prevents receive buffer overrun conditions
+
+### Overlap Phase
+
+- Performs simultaneous transmit and receive operations
+- Supports command-response peripherals
+
+### Read Phase
+
+- Generates clock edges using dummy writes
+- Captures incoming slave data
+
+This design enables support for a wide variety of SPI devices using a single reusable API.
 
 ---
 
-### Multi-Byte Burst Reads
+## ADXL345 Accelerometer Driver
 
-Reading individual axis registers separately risks data shearing if the sensor updates during acquisition.
+The device-specific driver manages all accelerometer configuration and measurement tasks.
 
-To guarantee atomic reads, the driver performs a six-byte burst transaction beginning at `DATAX0`.
+Features include:
 
-The command byte is assembled using:
+- Standby-mode configuration
+- Measurement-mode initialization
+- Full-resolution operation
+- Tap-detection support
+- Multi-byte burst acquisition
 
-- Bit 7 = Read
-- Bit 6 = Multi-byte
-- Bits 5:0 = Register Address
+The driver abstracts sensor-specific register operations from application code while leveraging the generic SPI layer.
 
-```text
-cmd = (1 << 7) | (1 << 6) | (DATAX0 & 0x3F)
-```
+---
 
-```c
-void ADXL345_ReadXYZ(int16_t *x,
-                     int16_t *y,
-                     int16_t *z)
-{
-    uint8_t cmd = (1 << 7) |
-                  (1 << 6) |
-                  (DATAX0 & 0x3F);
+## Atomic Burst Data Acquisition
 
-    uint8_t buf[6];
+To prevent axis data corruption during sensor updates, all three acceleration axes are acquired using a single six-byte SPI burst transaction.
 
-    spi_wr(1, &cmd, 6, buf, 0);
+Benefits include:
 
-    *x = (int16_t)((buf[1] << 8) | buf[0]);
-    *y = (int16_t)((buf[3] << 8) | buf[2]);
-    *z = (int16_t)((buf[5] << 8) | buf[4]);
-}
-```
-
-### Benefits
-
-- Single transaction
-- Consistent axis sampling
+- Consistent X/Y/Z sampling
 - No inter-axis timing skew
 - Reduced bus overhead
+- Improved measurement integrity
+
+The burst-read implementation ensures all axis measurements originate from the same sensor sample period.
 
 ---
 
-# 📂 File Architecture
+## Real-Time Acceleration Scaling
+
+Raw 16-bit sensor measurements are converted into physical acceleration values using the ADXL345 Full-Resolution scale factor.
+
+```text
+4 mg/LSB
+```
+
+Conversion:
+
+```text
+Acceleration = Raw Value × 0.004 g
+```
+
+This produces calibrated acceleration measurements directly in units of gravitational acceleration.
+
+---
+
+# Verification & Testing
+
+System functionality was validated using a digital logic analyzer and controlled hardware test procedures.
+
+## SPI Timing Verification
+
+Captured SPI waveforms verified:
+
+- Correct clock polarity and phase operation
+- Proper chip-select timing
+- Reliable transmit/receive sequencing
+- Expected byte-transfer timing
+
+Observed inter-byte gaps corresponded to software polling overhead rather than SPI peripheral limitations.
+
+---
+
+## Loopback Testing
+
+SPI communication was validated using hardware loopback configurations.
+
+### MISO Grounded
+
+Produced:
+
+```text
+[0, 0, 0, 0]
+```
+
+confirming reliable low-state detection.
+
+### MISO Connected to 3.3V
+
+Produced:
+
+```text
+[255, 255, 255, 255]
+```
+
+confirming stable high-state reception.
+
+---
+
+## Accelerometer Validation
+
+Verified:
+
+- Correct sensor initialization
+- Successful burst-read transactions
+- Consistent axis measurements
+- Accurate g-force conversion
+- Reliable tap-event detection
+
+---
+
+# Repository Structure
 
 ```text
 stm32-adxl345-spi-driver/
@@ -202,101 +232,38 @@ stm32-adxl345-spi-driver/
     └── sysmem.c
 ```
 
-### File Responsibilities
+---
 
-| File | Purpose |
-|--------|----------|
-| `spi_api.c` | Motorola SPI master implementation |
-| `adxl345.c` | Sensor configuration and burst-read logic |
-| `test.c` | Accelerometer processing and tap detection |
-| `delay.c` | SysTick timing utilities |
-| `uart.c` | USART2 console output |
-| `main.c` | Hardware initialization and entry point |
-| `syscalls.c` | Newlib syscall stubs |
-| `sysmem.c` | Heap and stack memory management |
+# Build & Run
+
+## Build
+
+```bash
+make
+```
+
+## Flash to Target
+
+Load the generated binary onto the STM32F411 development board using STM32CubeProgrammer, ST-Link Utility, or an equivalent programming interface.
+
+## Execute
+
+Power the target system and monitor output through the configured UART serial interface.
 
 ---
 
-# 🔬 Hardware Testing & Waveform Analysis
-
-System operation was verified using a digital logic analyzer.
-
-## High-Speed Loopback Analysis
-
-Using:
-
-```text
-PCLK / 2
-Baud Divisor = 0
-```
-
-captured waveforms showed small gaps between consecutive bytes.
-
-These gaps correspond to firmware polling overhead while checking:
-
-- TXE (Transmit Buffer Empty)
-- RXNE (Receive Buffer Not Empty)
-
-rather than limitations of the SPI peripheral itself.
-
----
-
-## MISO Diagnostic Integrity Testing
-
-### MISO Grounded
-
-Grounding the MISO line produced:
-
-```text
-[0, 0, 0, 0]
-```
-
-confirming reliable low-state reception.
-
-### MISO Tied to 3.3V
-
-Connecting MISO directly to VCC produced:
-
-```text
-[255, 255, 255, 255]
-```
-
-confirming stable high-state detection.
-
----
-
-## Calibrated g-Force Scaling
-
-Raw signed 16-bit measurements are converted into physical acceleration values using the ADXL345 Full-Resolution scale factor:
-
-```text
-4 mg/LSB
-```
-
-Conversion:
-
-```text
-a_axis = raw_register × 0.004 g
-```
-
-This produces calibrated acceleration values expressed directly in units of gravitational acceleration (`g`).
-
----
-
-# Key Learning Outcomes
-
-This project provided practical experience with:
+# Key Concepts Demonstrated
 
 - Bare-metal STM32 development
-- Register-level SPI peripheral configuration
-- Motorola SPI protocol implementation
-- Software-controlled chip select management
+- Register-level peripheral programming
+- SPI protocol implementation
 - Full-duplex serial communication
-- Multi-byte burst sensor transactions
-- Hardware timing analysis using logic analyzers
-- Polling-based hardware event detection
-- Accelerometer calibration and scaling
 - Layered embedded driver architecture
+- Device-driver abstraction
+- Multi-byte burst transactions
+- Hardware timing analysis
+- Logic analyzer debugging
+- Accelerometer calibration and scaling
 
 ---
 
