@@ -121,7 +121,7 @@ The event loop handles:
 - Ready socket events
 - Server console input for shutdown commands
 
-Using epoll allows the server to remain responsive without continuously polling sockets and scales more efficiently than traditional select() or poll() approaches.
+Using epoll allows the server to remain responsive without continuously polling sockets and scales more efficiently than traditional `select()` or `poll()` approaches.
 
 ---
 
@@ -140,34 +140,6 @@ server_log.txt
 ```
 
 This provides persistence across server restarts while also creating an auditable transaction history for debugging and verification.
-
----
-
-# Verification & Testing
-
-System functionality was validated using multiple concurrent clients performing operations against shared accounts.
-
-## Functional Testing
-
-Verified support for:
-
-- Deposits
-- Withdrawals
-- Balance inquiries
-- Invalid command handling
-- Invalid decimal precision rejection
-- Negative transaction rejection
-
----
-
-## Concurrency Validation
-
-Multiple clients simultaneously accessed identical account records while verifying:
-
-- Correct account balances
-- Proper transaction ordering
-- Absence of race conditions
-- Stable queue operation
 
 ---
 
@@ -213,9 +185,10 @@ Consumer threads correctly serialized account updates while allowing multiple cl
 producer-consumer-banking-server/
 ├── Client.c
 ├── Server.c
+├── Makefile
 ├── balance.csv
 ├── server_log.txt
-├── Makefile
+├── example_usage_run.png
 └── README.md
 ```
 
