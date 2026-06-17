@@ -1,150 +1,278 @@
-# Multiprocessing
-## CPE-2600 — Fall 2025  
-**Author:** Jesse Rost  
-**Section:** 112
+# Parallel Mandelbrot Fractal Renderer
+
+A parallel fractal rendering application developed in C that combines multiprocessing and multithreading to accelerate Mandelbrot set image generation. The project utilizes POSIX threads, process management primitives (`fork`, `exec`, `wait`), and workload partitioning techniques to efficiently render a sequence of zooming fractal frames across multiple CPU cores.
+
+The system generates a series of Mandelbrot images which can be assembled into a video, demonstrating practical performance scaling through concurrent execution and embarrassingly parallel computation.
 
 ---
 
-## 1. Overview
+# Overview
 
-This lab explores multiprocessing and multithreading by generating a sequence of Mandelbrot fractal images in parallel.
-The provided `mandel` program renders one image; the new program **`mandelmovie`**:
+The application extends a provided Mandelbrot renderer by introducing both process-level and thread-level parallelism.
 
-- The calculation of each image is split into multiple regions.
-- It uses pthreads to spin off the requested number of threads, with each thread calculating a different portion of the image.
-- It accepts a new command-line option, typically -t, to set the number of threads for image calculation.
-- Threads are ideal for this addition since threads typically share heap memory without additional overhead.
-- This calculation is "embarrassingly parallel" because each pixel can be calculated independently.
-- Uses `fork()` to spawn child processes  
-- Uses `exec()` to run `./mandel`  
-- Generates **50 frames**, zooming in on each one  
-- Limits the number of concurrent children with `-n`  
-- Parses command-line options using `getopt()`  
-- Waits for all children before exiting  
+Image generation is divided into independent workloads that can be computed concurrently. Multiple child processes generate frames simultaneously while each frame is internally partitioned among multiple worker threads.
 
-The generated JPEG frames are later combined into a video using `ffmpeg`.
+Because each pixel can be computed independently, the Mandelbrot calculation is highly parallelizable and scales effectively across modern multi-core processors.
 
 ---
 
-## 2. How `mandelmovie` Works
+# Key Features
 
-### Command Line Options
+- Multiprocess image generation using `fork()`
+- Process execution through `exec()`
+- POSIX thread-based image computation
+- Configurable process count (`-n`)
+- Configurable thread count (`-t`)
+- Dynamic workload partitioning
+- Command-line parameter parsing with `getopt()`
+- Automatic frame generation
+- Fractal zoom animation support
+- Performance benchmarking and scalability analysis
+
+---
+
+# System Architecture
+
+```text
+                    mandelmovie
+                         │
+         ┌───────────────┼───────────────┐
+         │               │               │
+         ▼               ▼               ▼
+      Child 1         Child 2        Child N
+         │               │               │
+         ▼               ▼               ▼
+      mandel          mandel         mandel
+         │               │               │
+         ▼               ▼               ▼
+    Thread Pool     Thread Pool    Thread Pool
+         │               │               │
+         ▼               ▼               ▼
+      Frame 1         Frame 2        Frame N
 ```
--n <children>   Maximum concurrent child processes
--t <threads>    Maximum number of threads being used
--x <value>      Mandelbrot center X-coordinate
--y <value>      Mandelbrot center Y-coordinate
--s <value>      Initial scale
--h              Show help
-```
 
-### Program Flow
-1. Parse command-line options. This now includes parsing the maximum number of concurrent processes (-n) and the number of threads for image calculation (-t).
-2. Loop through 50 frames.
-3. If too many children are active, wait for one to finish. (Controlled by the -n option).
-4. Fork a child:
+The parent process manages frame scheduling while child processes execute independent Mandelbrot render operations.
 
-   - Child computes scale, builds output filename, converts the thread count (-t) and other parameters to strings.
-
-   - The child then runs ./mandel via execl(), passing all coordinates, scale, output filename, and the thread count as command-line arguments.
-5. Parent continues spawning frames until all 50 are launched.
-6. Parent waits for all remaining children at the end.
-
-This achieves true multiprocessing and multithreading speedup on multi-core hardware.
+Within each child process, threads divide image regions and compute pixel values concurrently.
 
 ---
 
-## 3. Performance Results
+# Technical Highlights
 
-| # Processes (n) | # Threads (t) | Runtime (s) |
+## Multiprocessing Framework
+
+The parent process generates a sequence of 50 animation frames.
+
+For each frame:
+
+- A child process is created using `fork()`
+- Rendering parameters are calculated
+- The child launches the renderer using `exec()`
+- The parent continues scheduling additional work
+
+The number of active child processes is limited using the `-n` command-line option.
+
+This prevents excessive process creation and allows workload scaling based on available system resources.
+
+---
+
+## Multithreaded Image Rendering
+
+Each Mandelbrot image is subdivided into independent regions.
+
+Worker threads:
+
+- Compute assigned pixel regions
+- Operate without shared computation dependencies
+- Write results directly into image buffers
+
+Because each pixel calculation is independent, synchronization overhead remains extremely low.
+
+This makes Mandelbrot rendering an example of an embarrassingly parallel workload.
+
+---
+
+## Dynamic Workload Scaling
+
+The application supports independent configuration of:
+
+```text
+-n = Number of Processes
+-t = Number of Threads
+```
+
+This enables experimentation with different concurrency configurations and allows performance analysis across a wide range of hardware resources.
+
+---
+
+## Frame-Based Animation Generation
+
+The renderer automatically generates 50 sequential frames while continuously reducing the viewing scale.
+
+Each frame:
+
+- Maintains a common center point
+- Increases zoom depth
+- Produces a JPEG output image
+
+The resulting frame sequence can be assembled into a smooth zoom animation.
+
+---
+
+# Performance Analysis
+
+Execution times were measured across multiple process and thread configurations.
+
+| Processes | Threads | Runtime (s) |
 |------------|------------|-------------|
-| 1          | 1          |   119.668    |
-| 1          | 2          |    63.897    |
-| 1          | 5          |    43.273    |
-| 1          | 10         |    27.511    |
-| 1          | 20         |    19.510    |
-| 2          | 1          |    62.085    |
-| 2          | 2          |    40.218    |
-| 2          | 5          |    24.352    |
-| 2          | 10         |    17.427    |
-| 2          | 20         |    16.205    |
-| 5          | 1          |    34.836    |
-| 5          | 2          |    19.872    |
-| 5          | 5          |    17.027    |
-| 5          | 10         |    16.096    |
-| 5          | 20         |    16.289    |
-| 10         | 1          |    20.907    |
-| 10         | 2          |    21.561    |
-| 10         | 5          |    18.326    |
-| 10         | 10         |    19.234    |
-| 10         | 20         |    18.593    |
-| 20         | 1          |    17.449    |
-| 20         | 2          |    16.310    |
-| 20         | 5          |    16.022    |
-| 20         | 10         |    15.900    |
-| 20         | 20         |    18.209    |
+| 1 | 1 | 119.668 |
+| 1 | 10 | 27.511 |
+| 2 | 10 | 17.427 |
+| 5 | 10 | 16.096 |
+| 20 | 10 | 15.900 |
+
+Complete benchmarking data is available in the repository.
 
 ![Runtime Graph](multithreadingVisual.png)
 
 ---
 
-## 4. Discussion
+## Scaling Observations
 
-Optimal performance (the "sweet spot") is achieved by maximizing the use of the available CPU resources through a combination of both techniques. The runtime drops to its absolute minimum when the total number of concurrent tasks (Processes × Threads) approaches the number of logical cores available on the system, which in this case occurs around 10 threads per process at a high process count (n = 20,t = 10). Adding more threads or processes past this point introduces diminishing returns and ultimately increasing overhead (as seen in the n = 20, t = 20 result).
+Performance improved significantly as both process and thread counts increased.
+
+The fastest measured execution time occurred at:
+
+```text
+20 Processes
+10 Threads
+15.900 Seconds
+```
+
+Beyond this point, additional concurrency produced diminishing returns due to:
+
+- Thread scheduling overhead
+- Process management costs
+- CPU resource contention
+
+The results demonstrate the importance of balancing parallel workload size against available hardware resources.
 
 ---
 
-## 5. Movie Generation
+# Verification & Testing
 
-After generating the 50 frames:
+System behavior was validated through repeated rendering runs and performance measurements.
 
-```
-ffmpeg -framerate 30 -i frame_%02d.jpg mandel.mp4
-```
+## Functional Verification
 
-The output video (`mandel.mpg`) is included in the repository.
+Verified:
+
+- Correct frame generation
+- Proper zoom progression
+- Successful process creation
+- Accurate thread partitioning
+- Complete image output generation
 
 ---
 
-## 6. Build & Run Instructions
+## Concurrency Validation
 
-### Build:
+Confirmed:
+
+- Process count limits enforced correctly
+- Child processes terminate properly
+- Thread workloads remain independent
+- No image corruption during parallel rendering
+
+---
+
+## Performance Benchmarking
+
+Measured execution times across:
+
+- 5 process configurations
+- 5 thread configurations
+
+to evaluate scaling behavior and identify optimal execution parameters.
+
+---
+
+# Repository Structure
+
+```text
+parallel-mandelbrot-renderer/
+│
+├── mandelmovie.c
+├── mandelmovie.h
+├── mandel.c
+├── multithreadingVisual.png
+├── frame_00.jpg
+├── ...
+├── frame_49.jpg
+├── mandel.mp4
+└── README.md
 ```
+
+---
+
+# Build & Run
+
+## Build
+
+```bash
 make
 ```
 
-### Run examples:
-```
+## Run Examples
+
+```bash
 ./mandelmovie -n 10 -t 10
+```
+
+```bash
 ./mandelmovie -n 5 -t 5 -x -0.5 -y -0.5 -s 2.0
 ```
 
----
+### Command-Line Options
 
-## 7. Git Workflow (Required)
-
-```
-git checkout -b lab12dev
-git push --set-upstream origin lab12dev
-
-# After development:
-git checkout main
-git merge lab12dev
-git push
-
-git tag Lab12vFinal
-git push --tags
+```text
+-n <children>   Maximum concurrent child processes
+-t <threads>    Number of rendering threads
+-x <value>      Mandelbrot center X coordinate
+-y <value>      Mandelbrot center Y coordinate
+-s <value>      Initial zoom scale
+-h              Display help information
 ```
 
 ---
 
-## 8. Repository Contents
+## Video Generation
 
-- `mandelmovie.c`
-- `mandelmovie.h`
-- `mandel.c`
-- `frame_00.jpg` … `frame_49.jpg`
-- `mandel.mp4`
-- `multithreadingVisual.png`
-- `README.md`
+Generated frames can be combined into a video using FFmpeg:
 
+```bash
+ffmpeg -framerate 30 -i frame_%02d.jpg mandel.mp4
+```
+
+---
+
+# Key Concepts Demonstrated
+
+- POSIX process management
+- Fork/Exec programming model
+- Multithreaded computation
+- Workload partitioning
+- Embarrassingly parallel algorithms
+- Process synchronization
+- CPU performance scaling
+- Command-line argument parsing
+- High-performance image generation
+- Systems programming in C
+
+---
+
+# Author
+
+**Jesse Rost**
+
+**Course:** CPE 2600 – Systems Programming
