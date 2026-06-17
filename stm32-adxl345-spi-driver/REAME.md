@@ -10,23 +10,23 @@ The driver architecture uses a layered hardware-access model. This design separa
 
 ```text
 ┌─────────────────────────────────────────────────────────┐
-│               Application Layer (test.c)               │
-│   - Converts Raw Signed 16-Bit Values to g-Force Units │
-│   - Polls Physical PA0 Line for Real-Time Tap Events   │
+│               Application Layer (test.c)                │
+│   - Converts Raw Signed 16-Bit Values to g-Force Units  │
+│   - Polls Physical PA0 Line for Real-Time Tap Events    │
 └────────────────────────────┬────────────────────────────┘
                              │
                              ▼
 ┌─────────────────────────────────────────────────────────┐
-│          Device-Specific Driver (adxl345.c)            │
-│   - Restores Standby FSM Prior to Calibration          │
-│   - Atomic Multi-Byte Burst Reads (DATAX0 to DATAZ1)   │
+│          Device-Specific Driver (adxl345.c)             │
+│   - Restores Standby FSM Prior to Calibration           │
+│   - Atomic Multi-Byte Burst Reads (DATAX0 to DATAZ1)    │
 └────────────────────────────┬────────────────────────────┘
                              │
                              ▼
 ┌─────────────────────────────────────────────────────────┐
-│             Generic Bus Driver (spi_api.c)             │
-│   - Motorola SPI Bus Arbiter (Modes 0-3)              │
-│   - Software Slave Select Management (PA4 Active-LOW) │
+│             Generic Bus Driver (spi_api.c)              │
+│   - Motorola SPI Bus Arbiter (Modes 0-3)                │
+│   - Software Slave Select Management (PA4 Active-LOW)   │
 └─────────────────────────────────────────────────────────┘
 ```
 
