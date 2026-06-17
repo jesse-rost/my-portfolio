@@ -1,39 +1,34 @@
-CC=gcc
-CFLAGS=-Wall -g
-LDFLAGS=-ljpeg
+CC = gcc
+CFLAGS = -Wall -Iinclude
+LDFLAGS = -lpthread -ljpeg
 
-# Executables
-EXEC_MANDEL=mandel
-EXEC_MOVIE=mandelmovie
+# Source and Object files
+SOURCES = src/mandel.c src/mandelmovie.c src/jpegwr.c
+OBJECTS = $(SOURCES:.c=.o)
+EXECUTABLE = mandel
 
-# Source files
-MANDEL_SRC=mandel.c jpegrw.c
-MOVIE_SRC=mandelmovie.c
+all: $(EXECUTABLE)
 
-# Object files
-MANDEL_OBJ=$(MANDEL_SRC:.c=.o)
-MOVIE_OBJ=$(MOVIE_SRC:.c=.o)
+$(EXECUTABLE): $(OBJECTS)
+	$(CC) $(OBJECTS) $(LDFLAGS) -o $@
 
-# Default target: build both programs
-all: $(EXEC_MANDEL) $(EXEC_MOVIE)
-
-# Build mandel
-$(EXEC_MANDEL): $(MANDEL_OBJ)
-	$(CC) $(MANDEL_OBJ) $(LDFLAGS) -o $(EXEC_MANDEL)
-
-# Build mandelmovie
-$(EXEC_MOVIE): $(MOVIE_OBJ)
-	$(CC) $(MOVIE_OBJ) $(LDFLAGS) -o $(EXEC_MOVIE)
-
-# Pattern rule for .o + dependency files
+# Pattern rule to compile source files to object files
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
-	$(CC) -MM $< > $*.d
 
-# Include dependency files if they exist
--include $(MANDEL_OBJ:.o=.d)
--include $(MOVIE_OBJ:.o=.d)
-
-# Clean target
 clean:
-	rm -f $(MANDEL_OBJ) $(MOVIE_OBJ) $(EXEC_MANDEL) $(EXEC_MOVIE) *.d
+	rm -f $(OBJECTS) $(EXECUTABLE)
+```
+eof
+
+### 3. Finalize and Push
+After updating the `Makefile`, stage it and push your clean project structure to GitHub:
+
+```bash
+# Add the updated Makefile
+git add Makefile
+git commit -m "Build: Update Makefile for new directory structure"
+
+# Pull to resolve any remote conflicts, then push
+git pull origin main --rebase
+git -c credential.helper= push origin main
