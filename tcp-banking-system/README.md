@@ -171,20 +171,39 @@ Multiple clients simultaneously accessed identical account records while verifyi
 
 ---
 
-## Sample Session
+# Verification & Testing
 
-```text
-Enter account number: 1001
+System functionality was validated using multiple concurrent clients performing operations against shared accounts.
 
-deposit 50.00
-Server response: Deposit successful. New balance: 150.00
+## Functional Testing
 
-withdraw 20.00
-Server response: Withdrawal successful. New balance: 130.00
+Verified support for:
 
-balance
-Server response: Current balance: 130.00
-```
+- Deposits
+- Withdrawals
+- Balance inquiries
+- Invalid command handling
+- Invalid decimal precision rejection
+- Negative transaction rejection
+
+### Example Client Session
+
+![Banking System Demo](example_usage_run.png)
+
+*A sample client session demonstrating successful deposits, withdrawals, balance inquiries, and server-side validation of invalid transaction requests.*
+
+---
+
+## Concurrency Validation
+
+Multiple clients simultaneously accessed identical account records while verifying:
+
+- Correct account balances
+- Proper transaction ordering
+- Absence of race conditions
+- Stable queue operation
+
+Consumer threads correctly serialized account updates while allowing multiple client connections to remain active concurrently.
 
 ---
 
