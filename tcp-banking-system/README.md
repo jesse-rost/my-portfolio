@@ -160,7 +160,7 @@ Verified support for:
 
 ### Example Client Session
 
-![Banking System Demo](example_usage_run.png)
+![Banking System Demo](docs/example_usage_run.png)
 
 *A sample client session demonstrating successful deposits, withdrawals, balance inquiries, and server-side validation of invalid transaction requests.*
 
