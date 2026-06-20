@@ -182,7 +182,8 @@ A custom validation suite was implemented inside `test.c` to rigorously exercise
 
 * **Methodology:** The test suite systematically executes the transaction layer by passing a variety of deterministic payloads through the `spi_wr()` driver function.
 * **Assertion Testing:** Received data buffers are continuously evaluated against hardcoded expected results to ensure 100% data integrity.
-* **Hardware Loopback Validation:** * **MISO Grounded:** Produced `[0, 0, 0, 0]`, verifying stable low-state threshold detection.
+* **Hardware Loopback Validation:**
+  * **MISO Grounded:** Produced `[0, 0, 0, 0]`, verifying stable low-state threshold detection.
   * **MISO to 3.3V:** Produced `[255, 255, 255, 255]`, confirming consistent high-state bus logic.
 
 ---
