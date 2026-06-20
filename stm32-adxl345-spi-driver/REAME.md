@@ -168,6 +168,9 @@ Captured SPI waveforms verified:
 
 Observed inter-byte gaps corresponded to software polling overhead rather than SPI peripheral limitations.
 
+![SPI Logic Analyzer Capture](docs/spi_waveform.png)
+*Logic analyzer capture demonstrating sequential register byte transfers and the hardware timing gaps between consecutive data frames.*
+
 ---
 
 ## Loopback Testing
