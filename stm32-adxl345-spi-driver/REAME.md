@@ -155,60 +155,45 @@ This produces calibrated acceleration measurements directly in units of gravitat
 
 # Verification & Testing
 
-System functionality was validated using a digital logic analyzer and controlled hardware test procedures.
+System functionality was validated using a digital logic analyzer alongside automated test assertions to verify protocol compliance and hardware timing margin.
 
-## SPI Timing Verification
+## Loopback & Waveform Analysis
 
-Captured SPI waveforms verified:
-
-- Correct clock polarity and phase operation
-- Proper chip-select timing
-- Reliable transmit/receive sequencing
-- Expected byte-transfer timing
-
-Observed inter-byte gaps corresponded to software polling overhead rather than SPI peripheral limitations.
+To isolate peripheral behavior from the physical sensor, initial verification was performed using external hardware loopback configurations under varying clock frequencies.
 
 ![SPI Logic Analyzer Capture](docs/spi_waveform.png)
 
-*Logic analyzer capture demonstrating sequential register byte transfers and the hardware timing gaps between consecutive data frames.*
+*Logic analyzer capture highlighting the timing differences between high-speed and normal-speed transaction loops.*
+
+### 1. Timing & Polling Overhead (Top & Middle Panels)
+The first two panels capture the system operating in a **high-speed loopback** configuration. 
+* **Clock Dynamics:** The serial clock speed is significantly accelerated compared to standard operation.
+* **The Software Gap:** When zooming into the middle capture, a distinct transmission gap appears between the final clock edge of a byte transaction and the starting clock edge of the next block. 
+* **Root Cause:** This delay is entirely introduced by software execution. The ARM core must poll the SPI status flags (such as TXE and RXNE) inside the data loop before loading the next byte. This cleanly illustrates the real-world performance cost of blocking register-level polling handlers.
+
+### 2. Standard Loopback (Bottom Panel)
+The third panel illustrates a **normal-speed loopback** sequence. Because the communication clock is slower, the relative percentage of CPU polling overhead is greatly reduced, resulting in tighter sequential byte blocks on the physical wire.
 
 ---
 
-## Loopback Testing
+## Automated Test Harness
 
-SPI communication was validated using hardware loopback configurations.
+A custom validation suite was implemented inside `test.c` to rigorously exercise the full-duplex engine.
 
-### MISO Grounded
-
-Produced:
-
-```text
-[0, 0, 0, 0]
-```
-
-confirming reliable low-state detection.
-
-### MISO Connected to 3.3V
-
-Produced:
-
-```text
-[255, 255, 255, 255]
-```
-
-confirming stable high-state reception.
+* **Methodology:** The test suite systematically executes the transaction layer by passing a variety of deterministic payloads through the `spi_wr()` driver function.
+* **Assertion Testing:** Received data buffers are continuously evaluated against hardcoded expected results to ensure 100% data integrity.
+* **Hardware Loopback Validation:** * **MISO Grounded:** Produced `[0, 0, 0, 0]`, verifying stable low-state threshold detection.
+  * **MISO to 3.3V:** Produced `[255, 255, 255, 255]`, confirming consistent high-state bus logic.
 
 ---
 
-## Accelerometer Validation
+## Accelerometer Integration Validation
 
-Verified:
-
-- Correct sensor initialization
-- Successful burst-read transactions
-- Consistent axis measurements
-- Accurate g-force conversion
-- Reliable tap-event detection
+Once bus timing and software drivers were proven stable, physical sensor validation confirmed:
+* Successful ADXL345 device ID handshake initialization.
+* Stable multi-byte atomic burst reads across all three physical axes concurrently.
+* Clean real-time conversion of raw binary values into physical g-force thresholds.
+* Reliable trigger capturing via tap-event interrupt pins.
 
 ---
 
