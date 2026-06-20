@@ -33,13 +33,13 @@ Together these layers provide deterministic execution while maintaining a small 
 
 ```text
 ┌──────────────────────────────────────────────┐
-│               Application Layer              │
-│   Display FSM & Sensor Processing Tasks      │
+│                Application Layer             │
+│    Display FSM & Sensor Processing Tasks     │
 └─────────────────┬────────────────────────────┘
                   │
                   ▼
 ┌──────────────────────────────────────────────┐
-│          Cooperative Scheduler Layer         │
+│           Cooperative Scheduler Layer        │
 │     Round-Robin Task Scheduling Engine       │
 └─────────────────┬────────────────────────────┘
                   │
@@ -82,7 +82,6 @@ The scheduler operates from a 1 ms SysTick interrupt source and provides lightwe
 ### Context Management
 
 Task stacks are initialized by constructing Cortex-M exception frames containing:
-
 - xPSR
 - PC
 - LR
@@ -124,40 +123,52 @@ This ensures the system remains responsive even if a device becomes unavailable.
 
 ## State-Driven User Interface (`display_task.c` / `matrix.c`)
 
-Visual output is controlled through a dedicated Finite State Machine (FSM).
+Visual output is regulated by a strict Finite State Machine (FSM). Because an 8×8 LED matrix introduces severe character layout constraints, a custom font-masking engine optimizes pixel space to toggle between a system overview bar graph and individual magnified sensor screens.
 
-### DISPLAY_IDLE
+### 📊 DISPLAY_IDLE State
 
-Displays a combined bar graph representing:
+The default power-on view renders a composite real-time bar graph displaying Voltage, Current, and Temperature status across parallel columns.
 
-- Voltage
-- Current
-- Temperature
+* **Status Mapping:** Columns utilize color thresholds (Green = Normal, Yellow = Warning, Red = Critical) to provide an instantaneous visual health check.
 
-Color thresholds indicate operating status:
+![FSM Idle State](docs/display_idle.jpg)
+*System Overview: Active multi-column real-time telemetry bar graph operating in safe (Green) status.*
 
-- Green = Normal
-- Yellow = Warning
-- Red = Critical
+---
 
-### DISPLAY_SCROLLING
+### 🕹️ DISPLAY_SCROLLING State
 
-Activated through joystick input.
+When the analog joystick is toggled, the FSM transitions to a single-metric numerical readout mode. Users cycle through three dedicated sensor screens rendered via the shadow-buffered typography engine:
 
-Allows users to cycle through enlarged numerical displays of individual measurements.
+#### 1. Temperature Telemetry View
+Displays environmental thermal readings processed through the Bosch fixed-point compensation driver layer.
 
-### DISPLAY_RETURNING
+![Temperature Display View](docs/display_temp.jpg)
+*Magnified UI screen displaying a calibrated microcontroller ambient environment temperature of 21°C.*
 
-Maintains the currently selected display after user interaction.
+#### 2. Voltage Telemetry View
+Displays the real-time voltage reading across the rail. Due to the 8×8 pixel grid limits, the custom 3×5 numeric font packs the decimal format tightly to maximize readability across the limited grid.
 
-Following three seconds of inactivity, the FSM automatically transitions back to the default system overview screen.
+![Voltage Display View](docs/display_voltage.jpg)
+*Magnified UI screen rendering a real-time system rail voltage reading of 2.7V in an alert hue.*
+
+#### 3. Current Telemetry View
+Presents current consumption derived from the INA219 shunt resistor. The system renders the value in an abbreviated format (e.g., displaying `12 A` to signify 12 mA based on the engineering scale configurations defined in data structures).
+
+![Current Display View](docs/display_current.jpg)
+*Magnified UI screen tracking live system bus current draw at 12 mA.*
+
+---
+
+### ⏳ DISPLAY_RETURNING State
+
+An intermediary software counter state that acts as an interface timeout. If the user stops shifting the joystick on any individual sensor screen, the FSM holds that metric in focus for exactly **3000 ms** before automatically transitioning execution safely back to the default `DISPLAY_IDLE` bar graph overview.
 
 ---
 
 ## Interrupt-Driven Joystick Driver (`joystick.c` / `joystick.h`)
 
 The joystick subsystem interfaces with a two-axis analog joystick connected to:
-
 - PA0 (X-axis)
 - PA1 (Y-axis)
 
@@ -179,7 +190,6 @@ JOY_DEADBAND = 15
 ```
 
 to eliminate:
-
 - Analog noise
 - Mechanical centering drift
 - False navigation events
@@ -197,28 +207,17 @@ Accurate temperature measurements require Bosch's fixed-point compensation algor
 ### Initialization
 
 During startup:
-
 - Factory trim values are read directly from sensor memory
-- Calibration coefficients loaded:
-  - `dig_T1`
-  - `dig_T2`
-  - `dig_T3`
+- Calibration coefficients loaded: `dig_T1`, `dig_T2`, `dig_T3`
 
 ### Runtime Processing
 
 The compensation algorithm:
-
 - Uses integer arithmetic
 - Avoids floating-point overhead
 - Implements Bosch's datasheet-defined calculations
 
-Resulting measurements achieve approximately:
-
-```text
-±0.01°C resolution
-```
-
-while remaining computationally efficient.
+Resulting measurements achieve approximately ±0.01°C resolution while remaining computationally efficient.
 
 ---
 
@@ -251,14 +250,11 @@ Programming this value allows the INA219 to perform current calculations interna
 
 ## Shadow-Buffered Graphics Engine
 
-The HT16K33 does not provide native text-rendering functionality.
-
-To support dynamic numerical displays, a custom graphics engine was implemented.
+The HT16K33 LED matrix does not provide native text-rendering functionality. To support dynamic numerical displays, a custom graphics engine was implemented.
 
 ### Custom Fonts
 
 Two bitmap font sets were created:
-
 - 3×5 numeric font
 - 3×3 engineering unit font
 
@@ -273,7 +269,6 @@ All rendering occurs in memory before transmission.
 ### Atomic Updates
 
 Once rendering is complete:
-
 - The entire 16-byte frame buffer is transmitted in a single I2C transaction
 - Display flicker is eliminated
 - Bus traffic is minimized
@@ -284,6 +279,12 @@ Once rendering is complete:
 
 ```text
 hardware-health-monitor/
+│
+├── docs/
+│   ├── display_idle.jpg       # Composite overview bar-graph view
+│   ├── display_voltage.jpg    # 2.7V rail tracking screen
+│   ├── display_current.jpg    # 12 mA consumption screen
+│   └── display_temp.jpg       # 21°C compensated thermal screen
 │
 ├── Inc/
 │   ├── bme280.h
@@ -317,7 +318,6 @@ System operation was verified using runtime instrumentation and digital logic an
 ## Scheduler Timing Verification
 
 GPIO instrumentation was used to observe:
-
 - Task execution intervals
 - Scheduler timing accuracy
 - Context-switch behavior
@@ -327,7 +327,6 @@ Measured timing aligned with the intended 1 ms SysTick scheduling framework.
 ### I2C Bus Validation
 
 Logic analyzer captures verified:
-
 - Sensor polling transactions
 - Display update transfers
 - Correct start/stop sequences
@@ -337,7 +336,6 @@ Logic analyzer captures verified:
 ### FSM Verification
 
 Testing confirmed:
-
 - Correct state transitions
 - Reliable joystick navigation
 - Automatic return-to-idle behavior after 3000 ms
@@ -348,7 +346,6 @@ Testing confirmed:
 # Key Learning Outcomes
 
 This project provided practical experience with:
-
 - Bare-metal STM32 development
 - ARM Cortex-M exception handling
 - PendSV-based context switching
@@ -365,8 +362,6 @@ This project provided practical experience with:
 
 # Author
 
-**Jesse Rost**
-
-**Email:** rostj@msoe.edu
-
+**Jesse Rost** **Email:** rostj@msoe.edu  
 **Course:** CPE 2610 – Embedded Systems Design Lab
+```
