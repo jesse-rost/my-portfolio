@@ -125,38 +125,17 @@ This ensures the system remains responsive even if a device becomes unavailable.
 
 Visual output is regulated by a strict Finite State Machine (FSM). Because an 8×8 LED matrix introduces severe character layout constraints, a custom font-masking engine optimizes pixel space to toggle between a system overview bar graph and individual magnified sensor screens.
 
-### 📊 DISPLAY_IDLE State
+### 📱 Live UI State Gallery
 
-The default power-on view renders a composite real-time bar graph displaying Voltage, Current, and Temperature status across parallel columns. 
+| 📊 System Overview (Idle) | 🌡️ Temperature View (21°C) |
+| :---: | :---: |
+| <img src="docs/display_idle.jpg" width="300" alt="FSM Idle State"> | <img src="docs/display_temp.jpg" width="300" alt="Temperature Display View"> |
+| *Active multi-column real-time telemetry bar graph operating in safe status.* | *Magnified ambient environment thermal reading processed through the Bosch driver.* |
 
-* **Status Mapping:** Columns utilize color thresholds (Green = Normal, Yellow = Warning, Red = Critical) to provide an instantaneous visual health check.
-
-<img src="docs/display_idle.jpg" width="400" alt="FSM Idle State">
-*System Overview: Active multi-column real-time telemetry bar graph operating in safe (Green) status.*
-
----
-
-### 🕹️ DISPLAY_SCROLLING State
-
-When the analog joystick is toggled, the FSM transitions to a single-metric numerical readout mode. Users cycle through three dedicated sensor screens rendered via the shadow-buffered typography engine:
-
-#### 1. Temperature Telemetry View
-Displays environmental thermal readings processed through the Bosch fixed-point compensation driver layer. 
-
-<img src="docs/display_temp.jpg" width="400" alt="Temperature Display View">
-*Magnified UI screen displaying a calibrated microcontroller ambient environment temperature of 21°C.*
-
-#### 2. Voltage Telemetry View
-Displays the real-time voltage reading across the rail. Due to the 8×8 pixel grid limits, the custom 3×5 numeric font packs the decimal format tightly to maximize readability across the limited grid.
-
-<img src="docs/display_voltage.jpg" width="400" alt="Voltage Display View">
-*Magnified UI screen rendering a real-time system rail voltage reading of 2.7V in an alert hue.*
-
-#### 3. Current Telemetry View
-Presents current consumption derived from the INA219 shunt resistor. The system renders the value in an abbreviated format (e.g., displaying `12 A` to signify 12 mA based on the engineering scale configurations defined in data structures).
-
-<img src="docs/display_current.jpg" width="400" alt="Current Display View">
-*Magnified UI screen tracking live system bus current draw at 12 mA.*
+| ⚡ Voltage View (2.7V) | 🔌 Current View (12 mA) |
+| :---: | :---: |
+| <img src="docs/display_voltage.jpg" width="300" alt="Voltage Display View"> | <img src="docs/display_current.jpg" width="300" alt="Current Display View"> |
+| *Real-time system rail voltage reading packed tightly into a custom 3×5 numeric font.* | *Live bus current draw measured via the INA219 precision shunt module.* |
 
 ---
 
