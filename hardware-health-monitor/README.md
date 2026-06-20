@@ -125,7 +125,7 @@ This ensures the system remains responsive even if a device becomes unavailable.
 
 Visual output is regulated by a strict Finite State Machine (FSM). Because an 8×8 LED matrix introduces severe character layout constraints, a custom font-masking engine optimizes pixel space to toggle between a system overview bar graph and individual magnified sensor screens.
 
-### 📱 Live UI State Gallery
+### Live UI State Gallery
 
 | 📊 System Overview (Idle) | 🌡️ Temperature View (21°C) |
 | :---: | :---: |
