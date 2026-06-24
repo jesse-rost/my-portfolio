@@ -1,4 +1,4 @@
-# ARMv4 Single-Cycle Processor & System-on-Chip (SoC)
+# ARMv7 Single-Cycle Processor & System-on-Chip (SoC)
 
 A real-time embedded hardware-software system featuring a custom 32-bit single-cycle CPU core architecture synthesized on an Intel MAX 10 FPGA. The application executes a bare-metal autonomous navigation program that tracks spatial trajectory bounds and drives a physical Digibot robotic platform through real-time memory-mapped peripheral interaction.
 
