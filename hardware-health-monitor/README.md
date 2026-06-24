@@ -341,6 +341,6 @@ This project provided practical experience with:
 
 # Author
 
-**Jesse Rost** **Email:** rostj@msoe.edu  
+**Jesse Rost**
 **Course:** CPE 2610 – Embedded Systems Design Lab
 ```
