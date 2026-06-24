@@ -64,18 +64,46 @@ Together these layers provide deterministic single-cycle execution while maintai
 └──────────────────────────────────────────────────────────────┘
 ```
 
----
-
-# Hardware Platform
+## Hardware Platform
 
 | Component | Purpose |
-|------------|----------|
+|------------|------------|
 | Intel MAX 10 FPGA (10M50DAF484C7G) | Target FPGA Platform |
 | Digibot Rover | Physical autonomous robot |
 | Infrared Sensors | Obstacle detection |
 | DE10-Lite Switches | Runtime configuration |
 | DE10-Lite LEDs | System status indication |
 | 7-Segment Displays | Telemetry and debugging output |
+
+---
+
+# Live Hardware Demonstration
+
+A full hardware-software verification video showcasing the complete system implementation is available in the repository at:
+
+```text
+docs/digibot_demo.mov
+```
+
+The demonstration captures the synthesized CPU core running natively on the physical Intel MAX 10 FPGA board to drive the electro-mechanical Digibot rover.
+
+### Runtime Workflow
+
+#### 1. Linear Velocity Profiling
+
+The Digibot drives forward in a straight line while the CPU samples the infrared collision sensor. The single-cycle core accumulates clock cycles in internal register `R4` to index distance.
+
+#### 2. Impact Detection & Calibration
+
+Upon hitting a boundary, the processor halts the wheels, outputs the profiled travel time count directly to the 7-segment telemetry displays, and initiates a turn sequence.
+
+The CPU then profiles the clock cycles required in register `R7` to establish a precise 90-degree vector change.
+
+#### 3. Trajectory Replay Tracking
+
+After the initial sensor calibration sequence, the system waits for user confirmation via the slider switches.
+
+Once flipped, the CPU executes the calculated path timing values back-to-back out of its multi-port register file to autonomously navigate the robot in a closed square loop.
 
 ---
 
@@ -101,8 +129,6 @@ ALUSEL <= CMD when OPCODE=B"00" else
           X"2" when OPCODE=B"01" and PUBWL(2)='0' else
           X"D";
 ```
-
----
 
 ## Multi-Port Register File (`regfile.vhd`)
 
@@ -130,8 +156,6 @@ begin
 end process;
 ```
 
----
-
 ## Autonomous Navigation Firmware (`digibot_square_navigation.s`)
 
 The firmware directly controls the Digibot using memory-mapped I/O without an operating system.
@@ -147,7 +171,7 @@ The firmware directly controls the Digibot using memory-mapped I/O without an op
 
 ### Sensor Polling Example
 
-```asm
+```armasm
 count:
     LDR     R2, [R5]
     AND     R2, R2, #0x04
@@ -157,9 +181,7 @@ count:
     B       count
 ```
 
----
-
-# Memory-Mapped I/O Subsystem (`addressdecoder.vhd`)
+## Memory-Mapped I/O Subsystem (`addressdecoder.vhd`)
 
 The address decoder routes CPU accesses to memory and peripherals.
 
@@ -180,9 +202,12 @@ LD2 <= '0' when ADDR = X"000000E8"
 ### Address Map
 
 | Address | Function |
-|----------|-----------|
+|----------|----------|
 | 0x00000000 - 0x0000001F | Data RAM |
+| 0x000000E0 | LED Array Output |
+| 0x000000E4 | Motor Controller Register |
 | 0x000000E8 | 7-Segment Display |
+| 0x000000EC | Proximity Sensor Input |
 | 0x000000F0 | Switch Inputs |
 
 ---
@@ -190,8 +215,6 @@ LD2 <= '0' when ADDR = X"000000E8"
 # Advanced Hardware Features
 
 ## ALU Signed Overflow Detection
-
-The ALU computes overflow flags entirely in combinational logic.
 
 ```vhdl
 V <= (not S(0) and not INTA(31) and not INTB(31) and INTF(31)) or
@@ -206,13 +229,9 @@ Supports:
 - Subtraction overflow detection
 - Single-cycle flag generation
 
----
-
 ## Barrel Shifter & Rotator
 
-Implements ARM-style operand shifting before ALU execution.
-
-### Supported Operations
+Supported operations:
 
 - Logical Shift Left (LSL)
 - Logical Shift Right (LSR)
@@ -229,8 +248,6 @@ B <= NUM(29 downto 0) & B"00" when B"1111",
      NUM(7 downto 6) when B"0011",
      NUM when others;
 ```
-
----
 
 ## Seven-Segment Display Driver
 
@@ -260,7 +277,7 @@ SEG0 <= HEX0 when X"0",
 arm-single-cycle-processor/
 │
 ├── docs/
-│   └── digibot_demo.mp4
+│   └── digibot_demo.mov
 │
 ├── firmware/
 │   └── digibot_square_navigation.s
@@ -358,6 +375,6 @@ This project provided experience with:
 
 # Author
 
-**Jesse Rost**
+**Jesse Rost**  
 
-Course: CPE 1510 – Single-Cycle Processor Design Lab
+**Course:** CPE 1510 – Single-Cycle Processor Design Lab  
