@@ -360,6 +360,4 @@ This project provided experience with:
 
 **Jesse Rost**
 
-Milwaukee School of Engineering (MSOE)
-
 Course: CPE 1510 – Single-Cycle Processor Design Lab
