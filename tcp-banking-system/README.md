@@ -244,4 +244,4 @@ exit
 **Jesse Rost**  
 **Hunter Carroll**
 
-**Course:** CPE 2600 – Systems Programming
+**Course:** CPE 2600 – Systems Programming Design Lab
