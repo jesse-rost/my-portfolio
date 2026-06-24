@@ -261,6 +261,4 @@ Power the target system and monitor output through the configured UART serial in
 
 **Jesse Rost**
 
-**Email:** rostj@msoe.edu
-
 **Course:** CPE 2610 – Embedded Systems Design Lab
