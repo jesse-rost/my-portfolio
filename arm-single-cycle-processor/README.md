@@ -65,7 +65,6 @@ Together these layers provide deterministic single-cycle execution while maintai
 ```
 
 ## Hardware Platform
-
 | Component | Purpose |
 |------------|------------|
 | Intel MAX 10 FPGA (10M50DAF484C7G) | Target FPGA Platform |
@@ -81,9 +80,10 @@ Together these layers provide deterministic single-cycle execution while maintai
 
 A full hardware-software verification video showcasing the complete system implementation is available in the repository at:
 
-```text
-docs/digibot_demo.mov
-```
+`docs/digibot_demo.mov`
+
+> [!NOTE]
+> Minor deviations from a perfect square trajectory may be visible in the demonstration video. These deviations are due to physical Digibot alignment and drivetrain tolerances (wheel slip, motor imbalance, and chassis alignment), not errors in the CPU design, firmware, or FPGA synthesis. Functional validation confirms correct execution and timing behavior.
 
 The demonstration captures the synthesized CPU core running natively on the physical Intel MAX 10 FPGA board to drive the electro-mechanical Digibot rover.
 
