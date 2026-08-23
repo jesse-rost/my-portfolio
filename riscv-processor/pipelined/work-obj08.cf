@@ -1,0 +1,28 @@
+v 4
+file . "tb/pipelined_processor_tb.vhd" "784251db2e3f07a8f1d60d793ef41349eb297f2f" "20260823022134.174":
+  entity tb_riscv at 11( 386) + 0 on 185;
+  architecture test of tb_riscv at 17( 471) + 0 on 186;
+file . "src/dmem.vhd" "cdcc997500026ea1744d65ea68320d95f8372598" "20260823021931.010":
+  entity dmem at 22( 895) + 0 on 175;
+  architecture behavioral of dmem at 51( 1892) + 0 on 176;
+file . "src/control.vhd" "e5d97a6746e15788d7cc1fe9da7ceaf09ddc9eee" "20260823021942.016":
+  entity control at 11( 389) + 0 on 179;
+  architecture dataflow of control at 29( 1016) + 0 on 180;
+file . "src/irom.vhd" "172efc20435ae8e927d621c0a9c4a431605528de" "20260823021843.998":
+  entity irom at 18( 658) + 0 on 171;
+  architecture multiplexer of irom at 37( 1135) + 0 on 172;
+file . "src/regn.vhd" "34adddabdedc8ddf673e7a3b3ebb2e58d619f9e4" "20260823021834.602":
+  entity regn at 15( 573) + 0 on 169;
+  architecture behavioral of regn at 50( 1700) + 0 on 170;
+file . "src/imm.vhd" "93d520db4b67a430ef2defe1d9f9dbd8b09fd4d6" "20260823021851.517":
+  entity imm at 11( 388) + 0 on 173;
+  architecture dataflow of imm at 23( 634) + 0 on 174;
+file . "src/regfile.vhd" "d37c401f920a5b6919529934f8ef67b7463b23e4" "20260823022057.448":
+  entity regfile at 12( 470) + 0 on 181;
+  architecture behavioral of regfile at 40( 1513) + 0 on 182;
+file . "src/alu.vhd" "4faaf665934502971634e697dfa6f4155969e1ea" "20260823021937.459":
+  entity alu at 15( 657) + 0 on 177;
+  architecture dataflow of alu at 30( 1129) + 0 on 178;
+file . "src/pipelined_processor.vhd" "432d6fa6015bd2d51bcd773e928f26578a5a8d64" "20260823022059.010":
+  entity risc_pipelined at 18( 860) + 0 on 183;
+  architecture structural of risc_pipelined at 40( 1788) + 0 on 184;
