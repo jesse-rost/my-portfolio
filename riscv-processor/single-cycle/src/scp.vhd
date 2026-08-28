@@ -69,41 +69,33 @@ begin
     O_PC     <= PC_CURRENT;
     O_WBDATA <= WB_DATA;
 
-    /***
-    *** FETCH stage
-    ***/
+    -- ================= FETCH =================
     PC_REG : entity work.REGN
         generic map (WIDTH => 32)
         port map(D => PC_NEXT, LD => '0', RST => RST, CLK => CLK, Q => PC_CURRENT);
 
 
-    IMEM_INSTR : entity work.IROM -- goes to DECODE
+    IMEM_INSTR : entity work.IROM
         port map(ADDR => PC_CURRENT, Q => INSTR);
 
     PC_PLUS4 <= std_logic_vector(unsigned(PC_CURRENT) + 4);
 
-    -- PC mux logic
+    -- PC target selection
 
-    -- two possible targets
     JALR_TAR <= ALU_RESULT;
     BRANCH_TAR <= std_logic_vector(unsigned(PC_CURRENT) + unsigned(IMMR));
 
-    -- pick which target (jalr uses the ALU, everything else uses PC+imm)
     TARGET <= JALR_TAR when JALRSRC = '1' else BRANCH_TAR;
 
-    -- deide whether to use the target at all
     PCSRC <= JUMP or (BRANCH and ALU_FLAG);
 
-    -- final PC mux
     PC_NEXT <= TARGET when PCSRC = '1' else PC_PLUS4;
 
+    -- ================= DECODE =================
 
--- decode stage
-
-    IMM : entity work.IMM -- next use case within EXECUTE
+    IMM : entity work.IMM
         port map(INSTR => INSTR, IMMR => IMMR);
 
-    -- assign variables to their corresponding bits within the instruction
     OPCODE <= INSTR(6 downto 0);
     FUNCT3 <= INSTR(14 downto 12);
     FUNCT7 <= INSTR(31 downto 25);
@@ -114,7 +106,6 @@ begin
                  MEMREAD => MEMRD, MEMWRITE => MEMWR, MEMTOREG => MEMTOREG,
                  BRANCH => BRANCH, JUMP => JUMP, JALRSRC => JALRSRC);
 
-    -- assign variables to their corresponding bits within the instruction
     -- A1 = RS1
     -- A2 = RS2
     -- A3 = RD
@@ -122,25 +113,25 @@ begin
     A2 <= INSTR(24 downto 20);
     A3 <= INSTR(11 downto 7);
 
-    REG_FILE : entity work.REGFILE -- RD1 : straight to ALU, RD2 : into mux with imm
+    REG_FILE : entity work.REGFILE
         port map(A1 => A1, A2 => A2, A3 => A3, WD4 => WB_DATA, RST => RST,
                  RD1 => RD1, RD2 => RD2, CLK => CLK, REGWR => REGWR);
 
--- execute stage
+    -- ================= EXECUTE =================
 
-    -- RD2 / imm mux
     INPUT_2 <= RD2 when ALUSRC = '0' else IMMR;
 
     ALU : entity work.ALU
         port map(S => ALUCONTROL, A => RD1, B => INPUT_2, F => ALU_RESULT, Z => ALU_FLAG);
 
--- memory / wb stage
+    -- ================= MEMORY =================
 
     DMEM : entity work.DMEM
         port map(MEMWR => MEMWR, CLK => CLK, RST => RST, WD => RD2, A => ALU_RESULT, RD => RD);
 
-    -- wb mux
-    with MEMTOREG select -- goes into the regfile
+    -- ================= WRITEBACK =================
+
+    with MEMTOREG select
         WB_DATA <= RD when B"01",
                    ALU_RESULT when B"00",
                    PC_PLUS4 when others;
