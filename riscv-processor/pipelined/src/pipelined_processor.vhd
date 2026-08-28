@@ -5,6 +5,13 @@
 -- Date    :    08/22/26
 -- Provides:
 --   - The structural top-level implementation of the pipelined processor.
+-- About   :
+--   - Instantiates the PC, instruction ROM, immediate generator, control unit,
+--     register file, ALU, and data memory used by the processor datapath.
+--   - Transfers instructions and control signals through IF/ID, ID/EX,
+--     EX/MEM, and MEM/WB pipeline registers between processing stages.
+--   - Implements forwarding, load-use hazard stalls, branch and jump target
+--     selection, and writeback routing while exposing signals for debugging.
 -- Origin  :    Written from scratch.
 -- **********************************************************************
 
