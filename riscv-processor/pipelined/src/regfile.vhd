@@ -75,74 +75,74 @@ architecture BEHAVIORAL of REGFILE is
 
 begin
     -- use A1 and A2 to control two multiplexers choosing outputs RD1 and RD2
-    with A1 select
-    RD1 <= X0  when B"00000",
-           X1  when B"00001",
-           X2  when B"00010",
-           X3  when B"00011",
-           X4  when B"00100",
-           X5  when B"00101",
-           X6  when B"00110",
-           X7  when B"00111",
-           X8  when B"01000",
-           X9  when B"01001",
-           X10 when B"01010",
-           X11 when B"01011",
-           X12 when B"01100",
-           X13 when B"01101",
-           X14 when B"01110",
-           X15 when B"01111",
-           x16 when B"10000",
-           X17 when B"10001",
-           X18 when B"10010",
-           X19 when B"10011",
-           X20 when B"10100",
-           X21 when B"10101",
-           X22 when B"10110",
-           X23 when B"10111",
-           X24 when B"11000",
-           X25 when B"11001",
-           X26 when B"11010",
-           X27 when B"11011",
-           X28 when B"11100",
-           X29 when B"11101",
-           X30 when B"11110",
-           X31 when others;
-
-    with A2 select
-    RD2 <= X0  when B"00000",
-           X1  when B"00001",
-           X2  when B"00010",
-           X3  when B"00011",
-           X4  when B"00100",
-           X5  when B"00101",
-           X6  when B"00110",
-           X7  when B"00111",
-           X8  when B"01000",
-           X9  when B"01001",
-           X10 when B"01010",
-           X11 when B"01011",
-           X12 when B"01100",
-           X13 when B"01101",
-           X14 when B"01110",
-           X15 when B"01111",
-           x16 when B"10000",
-           X17 when B"10001",
-           X18 when B"10010",
-           X19 when B"10011",
-           X20 when B"10100",
-           X21 when B"10101",
-           X22 when B"10110",
-           X23 when B"10111",
-           X24 when B"11000",
-           X25 when B"11001",
-           X26 when B"11010",
-           X27 when B"11011",
-           X28 when B"11100",
-           X29 when B"11101",
-           X30 when B"11110",
-           X31 when others;
-
+        RD1 <= WD4 when (A1 = A3 and REGWR = '1' and A1 /= B"00000") else           
+           X0  when A1 = B"00000" else
+           X1  when A1 = B"00001" else
+           X2  when A1 = B"00010" else
+           X3  when A1 = B"00011" else
+           X4  when A1 = B"00100" else
+           X5  when A1 = B"00101" else
+           X6  when A1 = B"00110" else
+           X7  when A1 = B"00111" else
+           X8  when A1 = B"01000" else
+           X9  when A1 = B"01001" else
+           X10 when A1 = B"01010" else
+           X11 when A1 = B"01011" else
+           X12 when A1 = B"01100" else
+           X13 when A1 = B"01101" else
+           X14 when A1 = B"01110" else
+           X15 when A1 = B"01111" else
+           x16 when A1 = B"10000" else
+           X17 when A1 = B"10001" else
+           X18 when A1 = B"10010" else
+           X19 when A1 = B"10011" else
+           X20 when A1 = B"10100" else
+           X21 when A1 = B"10101" else
+           X22 when A1 = B"10110" else
+           X23 when A1 = B"10111" else
+           X24 when A1 = B"11000" else
+           X25 when A1 = B"11001" else
+           X26 when A1 = B"11010" else
+           X27 when A1 = B"11011" else
+           X28 when A1 = B"11100" else
+           X29 when A1 = B"11101" else
+           X30 when A1 = B"11110" else
+           X31;
+    
+    RD2 <= WD4 when (A2 = A3 and REGWR = '1' and A2 /= B"00000") else
+           X0  when A2 = B"00000" else
+           X1  when A2 = B"00001" else
+           X2  when A2 = B"00010" else
+           X3  when A2 = B"00011" else
+           X4  when A2 = B"00100" else
+           X5  when A2 = B"00101" else
+           X6  when A2 = B"00110" else
+           X7  when A2 = B"00111" else
+           X8  when A2 = B"01000" else
+           X9  when A2 = B"01001" else
+           X10 when A2 = B"01010" else
+           X11 when A2 = B"01011" else
+           X12 when A2 = B"01100" else
+           X13 when A2 = B"01101" else
+           X14 when A2 = B"01110" else
+           X15 when A2 = B"01111" else
+           x16 when A2 = B"10000" else
+           X17 when A2 = B"10001" else
+           X18 when A2 = B"10010" else
+           X19 when A2 = B"10011" else
+           X20 when A2 = B"10100" else
+           X21 when A2 = B"10101" else
+           X22 when A2 = B"10110" else
+           X23 when A2 = B"10111" else
+           X24 when A2 = B"11000" else
+           X25 when A2 = B"11001" else
+           X26 when A2 = B"11010" else
+           X27 when A2 = B"11011" else
+           X28 when A2 = B"11100" else
+           X29 when A2 = B"11101" else
+           X30 when A2 = B"11110" else
+           X31;
+    
 -- implement thirty two registers with active-low synchronous reset
 -- and active-high synchronous load
 reg0: process(rst,clk)

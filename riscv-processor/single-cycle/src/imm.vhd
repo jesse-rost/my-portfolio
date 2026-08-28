@@ -30,7 +30,7 @@ begin
             (31 downto 11 => INSTR(31)) & INSTR(30 downto 20) when B"0000011" | B"0010011" | B"1100111",               -- I-type : arithmetic & loads & jalr
             (31 downto 12 => INSTR(31)) & INSTR(31 downto 25) & INSTR(11 downto 7) when B"0100011",                    -- S-type
             (31 downto 12 => INSTR(31)) & INSTR(7) & INSTR(30 downto 25) & INSTR(11 downto 8) & '0' when B"1100011",   -- B-type
-            INSTR(31 downto 12) & (11 downto 0 => X"000") when B"0110111" ,                                            -- U-type-lui
+            INSTR(31 downto 12) & X"000" when B"0110111",                                            						  -- U-type-lui
             (31 downto 20 => INSTR(31)) & INSTR(19 downto 12) & INSTR(20) & INSTR(30 downto 21) & '0' when B"1101111", -- J-type
             X"DEADC0DE" when others;
 

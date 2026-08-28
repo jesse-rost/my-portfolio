@@ -23,10 +23,7 @@ entity RISC_SCP is
     port(CLK       : in std_logic;
           RST      : in std_logic;
           O_PC     : out std_logic_vector(31 downto 0);
-          O_INSTR  : out std_logic_vector(31 downto 0);
-          O_ALU    : out std_logic_vector(31 downto 0);
-          O_WBDATA : out std_logic_vector(31 downto 0);
-          O_REGWR  : out std_logic);
+          O_WBDATA : out std_logic_vector(31 downto 0));
 end entity RISC_SCP;
 
 architecture STRUCTURAL of RISC_SCP is
@@ -70,10 +67,7 @@ architecture STRUCTURAL of RISC_SCP is
 begin
 
     O_PC     <= PC_CURRENT;
-    O_INSTR  <= INSTR;
-    O_ALU    <= ALU_RESULT;
     O_WBDATA <= WB_DATA;
-    O_REGWR  <= REGWR;
 
     /***
     *** FETCH stage
