@@ -92,7 +92,7 @@ begin
            X13 when A1 = B"01101" else
            X14 when A1 = B"01110" else
            X15 when A1 = B"01111" else
-           x16 when A1 = B"10000" else
+           X16 when A1 = B"10000" else
            X17 when A1 = B"10001" else
            X18 when A1 = B"10010" else
            X19 when A1 = B"10011" else
@@ -126,7 +126,7 @@ begin
            X13 when A2 = B"01101" else
            X14 when A2 = B"01110" else
            X15 when A2 = B"01111" else
-           x16 when A2 = B"10000" else
+           X16 when A2 = B"10000" else
            X17 when A2 = B"10001" else
            X18 when A2 = B"10010" else
            X19 when A2 = B"10011" else

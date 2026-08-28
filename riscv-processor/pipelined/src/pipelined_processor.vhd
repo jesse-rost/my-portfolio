@@ -1,6 +1,6 @@
 -- **********************************************************************
 -- Project :    RISC-V Pipelined Processor
--- Filename:    pp.vhd
+-- Filename:    pipelined_processor.vhd
 -- Author  :    Jesse Rost
 -- Date    :    08/22/26
 -- Provides:
