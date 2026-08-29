@@ -389,4 +389,4 @@ For synthesis, both top levels are reduced to `CLK`, `RST`, `O_PC`, and `O_WBDAT
 
 ---
 
-**Jesse Rost** · Computer Engineering, Milwaukee School of Engineering
+**Jesse Rost** 
