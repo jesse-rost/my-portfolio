@@ -1,10 +1,26 @@
+# **********************************************************************
+# Project : RISC-V Pipelined Processor
+# Filename: bubble_sort.s
+# Author  : Jesse Rost
+# Date    : 08/24/26
+# Provides:
+#   - A bubble sort benchmark for the RISC-V processor implementations.
+# About   :
+#   - Stores five values to memory, sorts them in place, and loads the
+#     result back into x25-x29 for verification.
+#   - Uses early exit: the sort terminates after any pass with no swaps.
+#   - Written within the twelve-instruction subset, so comparisons are
+#     built from slt and beq, and loops from beq plus jal.
+#   - Assembled machine code lives in firmware/iRom.vhd.
+# **********************************************************************
+
 .global _start
 _start:
 
 # create intentiaonal values that will be stored into memory 
 addi x10, x0, 2
 addi x11, x0, 10
-addi x12, x0, 10
+addi x12, x0, 6
 addi x13, x0, 55
 addi x14, x0, 33
 
