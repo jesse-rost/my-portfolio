@@ -89,20 +89,20 @@ Adding further RV32I instructions requires only decoder entries, not datapath mo
 RISC-V places register fields at fixed bit positions across every instruction format. This is the property that makes the control unit and register file wiring straightforward, and it is the primary structural difference from the ARM design this project replaced.
 
 ```text
-        31        25 24   20 19   15 14  12 11    7 6      0
-       ┌────────────┬───────┬───────┬──────┬───────┬────────┐
-R-type │   funct7   │  rs2  │  rs1  │funct3│  rd   │ opcode │
-       ├────────────┴───────┼───────┼──────┼───────┼────────┤
-I-type │    imm[11:0]       │  rs1  │funct3│  rd   │ opcode │
-       ├────────────┬───────┼───────┼──────┼───────┼────────┤
-S-type │  imm[11:5] │  rs2  │  rs1  │funct3│imm[4:0]│opcode │
-       ├────────────┼───────┼───────┼──────┼───────┼────────┤
-B-type │imm[12,10:5]│  rs2  │  rs1  │funct3│imm[4:1,11]│opcode│
-       ├────────────┴───────┴───────┴──────┼───────┼────────┤
-U-type │           imm[31:12]              │  rd   │ opcode │
-       ├───────────────────────────────────┼───────┼────────┤
-J-type │  imm[20,10:1,11,19:12]            │  rd   │ opcode │
-       └───────────────────────────────────┴───────┴────────┘
+        31        25 24   20 19   15 14  12 11        7 6        0
+       ┌────────────┬───────┬───────┬──────┬───────────┬─────────┐
+R-type │   funct7   │  rs2  │  rs1  │funct3│  rd       │ opcode  │
+       ├────────────┴───────┼───────┼──────┼───────────┼─────────┤
+I-type │    imm[11:0]       │  rs1  │funct3│  rd       │ opcode  │
+       ├────────────┬───────┼───────┼──────┼───────────┼─────────┤
+S-type │  imm[11:5] │  rs2  │  rs1  │funct3│imm[4:0]   │ opcode  │
+       ├────────────┼───────┼───────┼──────┼───────────┼─────────┤
+B-type │imm[12,10:5]│  rs2  │  rs1  │funct3│imm[4:1,11]│ opcode  │
+       ├────────────┴───────┴───────┴──────┼───────────┼─────────┤
+U-type │           imm[31:12]              │  rd       │ opcode  │
+       ├───────────────────────────────────┼───────────┼─────────┤
+J-type │  imm[20,10:1,11,19:12]            │  rd       │ opcode  │
+       └───────────────────────────────────┴───────────┴─────────┘
 ```
 
 `rs1`, `rs2`, and `rd` never change position. Source register addresses can therefore be wired directly from the instruction word to the register file read ports with no multiplexing, and the sign bit of every immediate remains at bit 31 so sign-extension hardware is shared across formats.
