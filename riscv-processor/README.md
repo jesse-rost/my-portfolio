@@ -133,7 +133,7 @@ Both designs were synthesized for the same device with identical top-level ports
 
 | | Single-Cycle | Pipelined |
 |---|---|---|
-| Maximum clock frequency | 46.15 MHz | 78.00 MHz |
+| Maximum clock frequency | 46.15 MHz | 78.96 MHz |
 | Cycles (bubble sort benchmark) | 136 | 145 |
 | Execution time | 2.95 µs | 1.86 µs |
 | **Net speedup** | — | **1.59×** |
