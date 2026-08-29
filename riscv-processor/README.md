@@ -41,7 +41,7 @@ The system is structured as three development layers.
 - Hazard detection unit stalling on load-use dependencies
 - Branch flush logic discarding wrong-path instructions on taken branches
 
-Together these layers demonstrate the architectural tradeoff at the center of pipelined design: increased instruction latency and cycle count in exchange for a substantially shorter critical path and higher clock frequency.
+Together these layers demonstrate the architectural tradeoff at the center of pipelined design: increased instruction latency and cycle count in exchange for a shorter critical path and higher clock frequency.
 
 ---
 
@@ -88,14 +88,22 @@ Adding further RV32I instructions requires only decoder entries, not datapath mo
 
 RISC-V places register fields at fixed bit positions across every instruction format. This is the property that makes the control unit and register file wiring straightforward, and it is the primary structural difference from the ARM design this project replaced.
 
-| Bits | 31–25 | 24–20 | 19–15 | 14–12 | 11–7 | 6–0 |
-|---|---|---|---|---|---|---|
-| **R-type** | funct7 | rs2 | rs1 | funct3 | rd | opcode |
-| **I-type** | imm[11:0] | ← | rs1 | funct3 | rd | opcode |
-| **S-type** | imm[11:5] | rs2 | rs1 | funct3 | imm[4:0] | opcode |
-| **B-type** | imm[12\|10:5] | rs2 | rs1 | funct3 | imm[4:1\|11] | opcode |
-| **U-type** | imm[31:12] | ← | ← | ← | rd | opcode |
-| **J-type** | imm[20\|10:1\|11\|19:12] | ← | ← | ← | rd | opcode |
+```text
+        31        25 24   20 19   15 14  12 11    7 6      0
+       ┌────────────┬───────┬───────┬──────┬───────┬────────┐
+R-type │   funct7   │  rs2  │  rs1  │funct3│  rd   │ opcode │
+       ├────────────┴───────┼───────┼──────┼───────┼────────┤
+I-type │    imm[11:0]       │  rs1  │funct3│  rd   │ opcode │
+       ├────────────┬───────┼───────┼──────┼───────┼────────┤
+S-type │  imm[11:5] │  rs2  │  rs1  │funct3│imm[4:0]│opcode │
+       ├────────────┼───────┼───────┼──────┼───────┼────────┤
+B-type │imm[12,10:5]│  rs2  │  rs1  │funct3│imm[4:1,11]│opcode│
+       ├────────────┴───────┴───────┴──────┼───────┼────────┤
+U-type │           imm[31:12]              │  rd   │ opcode │
+       ├───────────────────────────────────┼───────┼────────┤
+J-type │  imm[20,10:1,11,19:12]            │  rd   │ opcode │
+       └───────────────────────────────────┴───────┴────────┘
+```
 
 `rs1`, `rs2`, and `rd` never change position. Source register addresses can therefore be wired directly from the instruction word to the register file read ports with no multiplexing, and the sign bit of every immediate remains at bit 31 so sign-extension hardware is shared across formats.
 
@@ -129,26 +137,60 @@ The trailing `'0'` on the B-type and J-type cases is the implied zero bit, equiv
 
 # Performance Results
 
-Both designs were synthesized for the same device with identical top-level ports and clock constraints. Fmax is reported at the Slow 1200 mV 85 °C corner.
+Both designs were synthesized for the same device with identical top-level ports and clock constraints. Fmax is reported at the Slow 1200 mV 85 °C corner and is a timing-model estimate rather than a measured silicon result; the comparison is meaningful because both designs were analyzed identically.
 
 | | Single-Cycle | Pipelined |
 |---|---|---|
 | Maximum clock frequency | 46.15 MHz | 78.96 MHz |
-| Cycles (bubble sort benchmark) | 136 | 145 |
-| Execution time | 2.95 µs | 1.86 µs |
-| **Net speedup** | — | **1.59×** |
+| Cycles (bubble sort benchmark) | 105 | 153 |
+| Execution time | 2.28 µs | 1.94 µs |
+| **Net speedup** | — | **1.17×** |
 
-The pipelined processor executes nine additional cycles — pipeline fill, load-use stalls, and branch flushes each contribute — but operates at 1.69× the clock frequency, producing a net throughput improvement of approximately 1.6×.
+Pipelining raises the clock frequency by 1.71×, but the pipelined processor requires 48 additional cycles to complete the same program. Most of the frequency gain is consumed by that cycle overhead, leaving a net improvement of 17 percent.
 
-## Critical Path Analysis
+## Where the Extra Cycles Go
 
-The theoretical five-stage ceiling is not reached, for three identifiable reasons:
+The benchmark executes 106 dynamic instructions. In the single-cycle design that is 105 cycles measured to the final register write. The pipelined design adds:
 
-**Branch resolution spans stages.** `PCSRC` is produced in EX from the ALU zero flag and feeds the PC multiplexer in IF combinationally within a single cycle. No pipeline register breaks this path, so it remains long after pipelining. Resolving branches in ID with a dedicated comparator would be the highest-impact optimization.
+| Source | Cycles |
+|---|---|
+| Pipeline fill | 4 |
+| Load-use stalls (8 occurrences × 1 cycle) | 8 |
+| Branch flushes (18 taken branches × 2 cycles) | 36 |
+| **Total overhead** | **48** |
 
-**Memories synthesize into logic.** The instruction ROM is a thirty-nine-way selected assignment and the data memory is a signal array; neither infers dedicated block RAM. Both contribute combinational delay to the fetch and memory stages.
+Branch flushing accounts for three quarters of the penalty. The bubble sort is unusually branch-dense: every loop iteration executes at least one conditional branch and one unconditional jump, and the inner loop body is only a handful of instructions long. With no branch prediction, each taken branch discards the two instructions already fetched behind it, so the processor spends a large fraction of its time refilling the pipeline.
 
-**Register file bypass adds decode delay.** The write-first read logic places a comparator and multiplexer in series with every register read.
+This is the worst case for a pipeline of this design. A workload with longer straight-line stretches between branches would retain far more of the frequency advantage.
+
+## Theoretical Ceiling Without Control Hazards
+
+For a program with no taken branches and no load-use dependencies, the pipelined processor requires only the four-cycle fill:
+
+```
+single-cycle:  N cycles / 46.15 MHz
+pipelined:     N + 4 cycles / 78.96 MHz
+```
+
+| Program length | Speedup |
+|---|---|
+| 40 instructions | 1.56× |
+| 100 instructions | 1.65× |
+| 1000 instructions | 1.70× |
+
+As the program lengthens, the fixed fill cost amortizes and the speedup converges on the frequency ratio of 1.71×. That ratio is the ceiling for this implementation — not the textbook 5× — for the reasons below.
+
+## Why the Frequency Gain Is 1.71× and Not 5×
+
+The idealized five-stage speedup assumes that pipelining divides one long combinational path into five equal segments. Two effects prevent that here.
+
+**Pipelining adds logic inside the stages it creates.** Forwarding multiplexers, hazard comparators, and flush control do not exist in the single-cycle design. Each is combinational logic inserted into a stage, so the longest stage after pipelining is considerably longer than one fifth of the original datapath. The critical path is not simply the single-cycle path divided by five; it is the worst stage *plus* the hazard machinery that stage now carries.
+
+**The critical path runs through the forwarding network.** Post-synthesis timing analysis identifies the worst-case path as `MEMWB_RD_ADDR[0]` to `IDEX_RD2[22]`, a data delay of 12.606 ns against the 10 ns constraint. This is the MEM/WB forwarding route: the writeback destination address feeds the forwarding comparator, whose result selects `WB_DATA` through the forwarding multiplexer and into the execute stage. Registering the forwarding decision, or computing it a cycle earlier, would shorten this path.
+
+Two further factors contribute. The instruction ROM is a thirty-nine-way selected assignment and the data memory is a signal array, so neither infers dedicated block RAM; both add combinational delay. The register file's write-first bypass places a comparator and multiplexer in series with every register read.
+
+Taken together, the practical conclusion is that throughput on this benchmark is limited by control hazards rather than by clock frequency. Branch prediction, or resolving branches in the decode stage with a dedicated comparator, would recover more real performance than any further work on the critical path.
 
 ---
 
@@ -229,6 +271,8 @@ Each component is exercised by a self-checking testbench using `assert` statemen
 
 The processor-level testbenches log per-cycle state — program counter, instruction in EX, register file reads, forwarding sources, ALU operands, and writeback — which is how the read-during-write and forwarding defects above were isolated.
 
+Complete simulation traces for both implementations are in `docs/`. Each records per-cycle processor state and flags every register write, ending with the sorted array loaded back into `x25`–`x29`.
+
 ## Benchmark Program
 
 `firmware/bubble_sort.s` sorts a five-element array in memory using a bubble sort with early exit on a swap-free pass. Written by hand within the twelve-instruction subset, comparisons are constructed from `slt` and `beq`, and loops from `beq` paired with `jal`.
@@ -246,6 +290,11 @@ bubble_sort:
 
 The `lw x18, 0(x19)` followed immediately by a dependent `beq` produces a load-use hazard on every loop iteration, exercising the stall logic under real workload conditions. The program additionally covers chained data dependencies, taken and not-taken branches, and backward jumps.
 
+```
+input:  [2, 10, 6, 55, 33]
+output: [2, 6, 10, 33, 55]
+```
+
 Both processors produce identical sorted output.
 
 ---
@@ -255,14 +304,15 @@ Both processors produce identical sorted output.
 ```text
 riscv-processor/
 │
+├── docs/
+│   ├── single_cycle_trace.log
+│   └── pipelined_trace.log
+│
 ├── firmware/
 │   ├── bubble_sort.s
 │   └── iRom.vhd
 │
 ├── images/
-│   ├── datapath.png
-│   ├── fmax_single_cycle.png
-│   └── fmax_pipelined.png
 │
 ├── single-cycle/
 │   ├── src/
@@ -326,7 +376,7 @@ Quartus projects target `10M50DAF484C7G` under a single clock constraint:
 create_clock -name CLK -period 10.000 [get_ports CLK]
 ```
 
-Both top levels expose only `CLK`, `RST`, `O_PC`, and `O_WBDATA` for synthesis. Some observable output is required — with none, synthesis correctly determines that no logic affects anything externally visible and optimizes the entire design away.
+For synthesis, both top levels are reduced to `CLK`, `RST`, `O_PC`, and `O_WBDATA`. Some observable output is required — with none, synthesis correctly determines that no logic affects anything externally visible and optimizes the entire design away. The simulation versions expose considerably more internal state, which exceeds the device pin count and is therefore trimmed before synthesis.
 
 ---
 
