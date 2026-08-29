@@ -69,6 +69,10 @@ Together these layers demonstrate the architectural tradeoff at the center of pi
 └──────────────────────────────────────────────────────────────┘
 ```
 
+![Pipelined datapath](images/pipelined_processor.png)
+
+Instructions advance left to right through five stages, isolated by four pipeline registers. Forwarding paths route in-flight results backward from EX/MEM and MEM/WB to the ALU inputs. The hazard unit freezes the program counter and IF/ID register while bubbling ID/EX, and a taken branch resolved in EX flushes both IF/ID and ID/EX.
+
 ## Supported Instruction Set
 
 A twelve-instruction subset of RV32I, chosen to exercise every datapath pattern without redundancy.
@@ -89,20 +93,20 @@ Adding further RV32I instructions requires only decoder entries, not datapath mo
 RISC-V places register fields at fixed bit positions across every instruction format. This is the property that makes the control unit and register file wiring straightforward, and it is the primary structural difference from the ARM design this project replaced.
 
 ```text
-        31        25 24   20 19   15 14  12 11        7 6        0
-       ┌────────────┬───────┬───────┬──────┬───────────┬─────────┐
-R-type │   funct7   │  rs2  │  rs1  │funct3│  rd       │ opcode  │
-       ├────────────┴───────┼───────┼──────┼───────────┼─────────┤
-I-type │    imm[11:0]       │  rs1  │funct3│  rd       │ opcode  │
-       ├────────────┬───────┼───────┼──────┼───────────┼─────────┤
-S-type │  imm[11:5] │  rs2  │  rs1  │funct3│imm[4:0]   │ opcode  │
-       ├────────────┼───────┼───────┼──────┼───────────┼─────────┤
-B-type │imm[12,10:5]│  rs2  │  rs1  │funct3│imm[4:1,11]│ opcode  │
-       ├────────────┴───────┴───────┴──────┼───────────┼─────────┤
-U-type │           imm[31:12]              │  rd       │ opcode  │
-       ├───────────────────────────────────┼───────────┼─────────┤
-J-type │  imm[20,10:1,11,19:12]            │  rd       │ opcode  │
-       └───────────────────────────────────┴───────────┴─────────┘
+        31        25 24   20 19   15 14  12 11    7 6      0
+       ┌────────────┬───────┬───────┬──────┬───────┬────────┐
+R-type │   funct7   │  rs2  │  rs1  │funct3│  rd   │ opcode │
+       ├────────────┴───────┼───────┼──────┼───────┼────────┤
+I-type │    imm[11:0]       │  rs1  │funct3│  rd   │ opcode │
+       ├────────────┬───────┼───────┼──────┼───────┼────────┤
+S-type │  imm[11:5] │  rs2  │  rs1  │funct3│imm[4:0]│opcode │
+       ├────────────┼───────┼───────┼──────┼───────┼────────┤
+B-type │imm[12,10:5]│  rs2  │  rs1  │funct3│imm[4:1,11]│opcode│
+       ├────────────┴───────┴───────┴──────┼───────┼────────┤
+U-type │           imm[31:12]              │  rd   │ opcode │
+       ├───────────────────────────────────┼───────┼────────┤
+J-type │  imm[20,10:1,11,19:12]            │  rd   │ opcode │
+       └───────────────────────────────────┴───────┴────────┘
 ```
 
 `rs1`, `rs2`, and `rd` never change position. Source register addresses can therefore be wired directly from the instruction word to the register file read ports with no multiplexing, and the sign bit of every immediate remains at bit 31 so sign-extension hardware is shared across formats.
@@ -147,6 +151,14 @@ Both designs were synthesized for the same device with identical top-level ports
 | **Net speedup** | — | **1.17×** |
 
 Pipelining raises the clock frequency by 1.71×, but the pipelined processor requires 48 additional cycles to complete the same program. Most of the frequency gain is consumed by that cycle overhead, leaving a net improvement of 17 percent.
+
+**Single-cycle — 46.15 MHz**
+
+![Single-cycle Fmax](images/fmax_single_cycle.png)
+
+**Pipelined — 78.96 MHz**
+
+![Pipelined Fmax](images/fmax_pipelined.png)
 
 ## Where the Extra Cycles Go
 
@@ -313,6 +325,9 @@ riscv-processor/
 │   └── iRom.vhd
 │
 ├── images/
+│   ├── fmax_pipelined.png
+│   ├── fmax_single_cycle.png
+│   └── pipelined_processor.png
 │
 ├── single-cycle/
 │   ├── src/
@@ -389,4 +404,23 @@ For synthesis, both top levels are reduced to `CLK`, `RST`, `O_PC`, and `O_WBDAT
 
 ---
 
-**Jesse Rost** 
+# Learning Outcomes
+
+This project provided experience with:
+
+- RISC-V RV32I instruction set architecture and encoding
+- Instruction pipelining and pipeline register design
+- Data hazard detection and operand forwarding
+- Load-use stall generation and pipeline bubble injection
+- Control hazard resolution through pipeline flushing
+- Register file read-during-write bypass
+- Self-checking testbench design in VHDL
+- Cycle-level trace analysis for hardware debugging
+- Static timing analysis and critical path identification
+- Performance modelling and architectural tradeoff evaluation
+- Hand-written RISC-V assembly under a constrained instruction set
+- GHDL simulation and Intel Quartus synthesis workflows
+
+---
+
+**Jesse Rost** · Computer Engineering, Milwaukee School of Engineering
